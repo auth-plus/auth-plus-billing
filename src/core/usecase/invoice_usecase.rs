@@ -17,13 +17,11 @@ impl InvoiceUsecase {
                 ReadingUserError::UserNotFoundError => return Err(String::from("User Not found")),
             },
         };
-        return match self.reading_invoice.list_by_user_id(user.id) {
+        match self.reading_invoice.list_by_user_id(user.id) {
             Ok(invoices) => Ok(invoices),
             Err(error) => match error {
-                ReadingInvoiceError::InvoiceNotFoundError => {
-                    return Err(String::from("Invoice Not found"))
-                }
+                ReadingInvoiceError::InvoiceNotFoundError => Err(String::from("Invoice Not found")),
             },
-        };
+        }
     }
 }

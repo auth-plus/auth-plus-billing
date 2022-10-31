@@ -16,7 +16,5 @@ pub fn get_core() -> Core {
         reading_invoice: Box::new(invoice_repository),
     };
 
-    return Core {
-        invoice_usecase: invoice_usecase,
-    };
+    Core { invoice_usecase }
 }
