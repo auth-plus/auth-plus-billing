@@ -1,0 +1,52 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dependency
+    ports:
+      - '5000:5000'
+    command: tail -f /dev/null
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    restart: always
+    networks:
+      - host
+    depends_on:
+      - database
+
+  database:
+    container_name: postgres
+    image: postgres:11.12
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: db_password
+      POSTGRES_USER: root
+      POSTGRES_DB: billing
+    ports:
+      - '5432:5432'
+    volumes:
+      - v-database:/var/lib/postgres
+    networks:
+      - host
+
+  database-migration:
+    container_name: dbmate
+    image: amacneil/dbmate
+    command: --url postgres://root:db_password@database:5432/billing?sslmode=disable --wait --wait-timeout 60s --no-dump-schema up
+    volumes:
+      - ./db:/db
+    depends_on:
+      - database
+    networks:
+      - host
+
+networks:
+  host:
+    driver: bridge
+
+volumes:
+  v-database:
