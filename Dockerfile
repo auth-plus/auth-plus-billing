@@ -1,8 +1,8 @@
-FROM rust:alpine3.16 as builder
+FROM rust:1.64.0 as dependency
 WORKDIR /app
 COPY . .
 # RUN cargo check
-RUN cargo build --release
+RUN cargo build
 
 FROM alpine:3.16.2 as deploy
 WORKDIR /app
