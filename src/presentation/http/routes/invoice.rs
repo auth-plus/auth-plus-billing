@@ -8,7 +8,8 @@ struct GetInvoiceOutputSchema {
 }
 
 pub async fn get_invoice(user_id: web::Path<String>) -> impl Responder {
-    match core::get_core().invoice_usecase.get_by_user_id(&user_id) {
+    let core_x = core::get_core().await;
+    match core_x.invoice_usecase.get_by_user_id(&user_id).await {
         Ok(invoces) => {
             let resp = GetInvoiceOutputSchema { invoces };
             let json = web::Json(resp);

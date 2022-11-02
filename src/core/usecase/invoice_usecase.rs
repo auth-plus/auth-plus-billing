@@ -10,17 +10,23 @@ pub struct InvoiceUsecase {
 }
 
 impl InvoiceUsecase {
-    pub fn get_by_user_id(&self, user_id: &str) -> Result<Vec<Invoice>, String> {
-        let user = match self.reading_user.list_by_id(user_id) {
+    pub async fn get_by_user_id(&self, user_id: &str) -> Result<Vec<Invoice>, String> {
+        let result = self.reading_user.list_by_id(user_id).await;
+        let user = match result {
             Ok(user) => user,
             Err(error) => match error {
                 ReadingUserError::UserNotFoundError => return Err(String::from("User Not found")),
+                ReadingUserError::UnmappedError => {
+                    return Err(String::from("Something wrong happen"))
+                }
             },
         };
-        match self.reading_invoice.list_by_user_id(user.id) {
+        let result = self.reading_invoice.list_by_user_id(user.id).await;
+        match result {
             Ok(invoices) => Ok(invoices),
             Err(error) => match error {
                 ReadingInvoiceError::InvoiceNotFoundError => Err(String::from("Invoice Not found")),
+                ReadingInvoiceError::UnmappedError => Err(String::from("Something wrong happen")),
             },
         }
     }

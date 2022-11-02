@@ -1,8 +1,8 @@
-use rust_decimal::Decimal;
 use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Invoice {
     pub id: String,
-    pub value: Decimal,
+    pub user_id: String,
+    pub status: String,
 }
