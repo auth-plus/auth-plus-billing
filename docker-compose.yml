@@ -36,7 +36,6 @@ services:
   database-migration:
     container_name: dbmate
     image: amacneil/dbmate
-    command: --url postgres://root:db_password@database:5432/billing?sslmode=disable --wait --wait-timeout 60s --no-dump-schema up
     volumes:
       - ./db:/db
     depends_on:
