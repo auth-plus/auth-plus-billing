@@ -11,5 +11,4 @@ pub trait ReadingUser {
 pub enum ReadingUserError {
     UserNotFoundError,
     UnmappedError,
-    InvalidUuidError,
 }

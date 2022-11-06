@@ -26,7 +26,7 @@ async fn list_by_user_id(
     let list = match result {
         Ok(list) => list,
         Err(err) => {
-            println!("InvoiceRepository.list_by_user_id :{:?}", err);
+            tracing::error!("InvoiceRepository.list_by_user_id :{:?}", err);
             return Err(ReadingInvoiceError::UnmappedError);
         }
     };
