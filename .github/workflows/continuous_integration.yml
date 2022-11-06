@@ -32,11 +32,35 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
   Test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:11.12
+        env:
+          POSTGRES_PASSWORD: db_password
+          POSTGRES_USER: root
+          POSTGRES_DB: billing
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      APP_NAME: auth-plus-billling
+      PORT: 3000
+      RUST_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_USER: root
+      DATABASE_PASSWORD: db_password
+      DATABASE_DATABASE: billing
+      DATABASE_PORT: 5432
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - run: HOST=localhost make migration/up
       - run: cargo test
   Lint:
     runs-on: ubuntu-latest

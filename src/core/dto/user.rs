@@ -1,7 +1,8 @@
 use serde::Serialize;
-#[derive(Serialize)]
+use uuid::Uuid;
 
+#[derive(Serialize, Clone)]
 pub struct User {
-    pub id: String,
-    pub external_id: String,
+    pub id: Uuid,
+    pub external_id: Uuid,
 }

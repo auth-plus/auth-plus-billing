@@ -1,8 +1,9 @@
 use serde::Serialize;
+use uuid::Uuid;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug)]
 pub struct Invoice {
-    pub id: String,
-    pub user_id: String,
+    pub id: Uuid,
+    pub user_id: Uuid,
     pub status: String,
 }

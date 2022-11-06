@@ -12,6 +12,7 @@ pub async fn get_core() -> Core {
     // Let start transaction
     let conn = get_connection().await;
 
+    // repositories
     let invoice_repository = repository::invoice_repository::InvoiceRepository::new(conn.clone());
     let user_repository = repository::user_repository::UserRepository::new(conn);
 
