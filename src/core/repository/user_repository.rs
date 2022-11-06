@@ -26,13 +26,13 @@ async fn list_by_id(conn: &PgPool, external_id: &Uuid) -> Result<User, ReadingUs
                 id: dao.id,
                 external_id: dao.external_id,
             };
-            return Ok(u);
+            Ok(u)
         }
         Err(err) => match err {
-            sqlx::Error::RowNotFound => return Err(ReadingUserError::UserNotFoundError),
+            sqlx::Error::RowNotFound => Err(ReadingUserError::UserNotFoundError),
             error => {
                 tracing::error!("{:?}", error);
-                return Err(ReadingUserError::UnmappedError);
+                Err(ReadingUserError::UnmappedError)
             }
         },
     }
