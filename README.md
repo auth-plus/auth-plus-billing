@@ -1,5 +1,7 @@
 # auth-plus-billing
 
+[![codecov](https://codecov.io/gh/auth-plus/auth-plus-billing/branch/main/graph/badge.svg?token=PO6CQJDQJH)](https://codecov.io/gh/auth-plus/auth-plus-billing)
+
 A billing system, it should be able to
 
 - Create a invoice with item that musta have a description and an amount
