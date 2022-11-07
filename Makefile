@@ -15,6 +15,7 @@ dev:
 .PHONY: test
 test:
 	make infra/up
+	HOST=localhost make migration/up
 	docker-compose up -d api
 	docker-compose exec -T api cargo build
 	docker-compose exec -T api cargo test

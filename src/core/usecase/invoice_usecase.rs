@@ -23,10 +23,9 @@ impl InvoiceUsecase {
             Err(error) => match error {
                 ReadingUserError::UserNotFoundError => return Err(String::from("User Not found")),
                 ReadingUserError::UnmappedError => {
-                    return Err(String::from("Something wrong happen"))
-                }
-                ReadingUserError::InvalidUuidError => {
-                    return Err(String::from("Database System error"))
+                    return Err(String::from(
+                        "ReadingUserError::UnmappedError Something wrong happen",
+                    ))
                 }
             },
         };
@@ -35,7 +34,9 @@ impl InvoiceUsecase {
             Ok(invoices) => Ok(invoices),
             Err(error) => match error {
                 ReadingInvoiceError::InvoiceNotFoundError => Err(String::from("Invoice Not found")),
-                ReadingInvoiceError::UnmappedError => Err(String::from("Something wrong happen")),
+                ReadingInvoiceError::UnmappedError => Err(String::from(
+                    "ReadingInvoiceError::UnmappedError Something wrong happen",
+                )),
             },
         }
     }
