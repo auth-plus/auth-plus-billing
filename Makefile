@@ -9,6 +9,7 @@ infra/down:
 .PHONY: dev
 dev:
 	make infra/up
+	HOST=localhost make migration/up
 	docker-compose up -d api
 	docker-compose exec api sh
 
