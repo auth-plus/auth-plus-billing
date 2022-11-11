@@ -8,7 +8,7 @@ pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
-pub struct InvoiceDAO {
+struct InvoiceDAO {
     invoice_id: Uuid,
     user_id: Uuid,
     status: String,
@@ -61,7 +61,8 @@ async fn list_by_user_id(
             description: curre.description,
             quantity: curre.quantity,
         };
-        match out
+        let clone_out = out.clone();
+        match clone_out
             .into_iter()
             .position(|x: Invoice| x.id == curre.invoice_id)
         {
@@ -73,8 +74,8 @@ async fn list_by_user_id(
                 let invoice = Invoice {
                     id: curre.invoice_id,
                     itens: vec![item],
-                    status: String::from(""),
-                    user_id: Uuid::new_v4(),
+                    status: curre.status,
+                    user_id: curre.user_id,
                 };
                 out.push(invoice);
                 out
