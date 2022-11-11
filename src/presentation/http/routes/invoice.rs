@@ -1,6 +1,31 @@
-use crate::core;
-use actix_web::{get, web, HttpResponse, Responder};
-use serde::Serialize;
+use crate::core::{self, dto::invoice_item::InvoiceItem};
+use actix_web::{get, post, web, HttpResponse, Responder};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+pub struct CreateInvoiceInputSchema {
+    pub user_id: String,
+    pub itens: Vec<InvoiceItem>,
+}
+
+#[post("/invoice")]
+pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl Responder {
+    let core_x = core::get_core().await;
+    match core_x
+        .invoice_usecase
+        .create_invoice(&json.user_id, &json.itens)
+        .await
+    {
+        Ok(invoce) => {
+            let json = web::Json(invoce);
+            HttpResponse::Ok().json(json)
+        }
+        Err(error) => {
+            let resp = format!("Something wrong happen: {}", error);
+            HttpResponse::InternalServerError().body(resp)
+        }
+    }
+}
 
 #[derive(Serialize)]
 struct GetInvoiceOutputSchema {

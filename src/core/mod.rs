@@ -19,7 +19,8 @@ pub async fn get_core() -> Core {
     //usecases
     let invoice_usecase = usecase::invoice_usecase::InvoiceUsecase {
         reading_user: Box::new(user_repository),
-        reading_invoice: Box::new(invoice_repository),
+        reading_invoice: Box::new(invoice_repository.clone()),
+        creating_invoice: Box::new(invoice_repository.clone()),
     };
 
     Core { invoice_usecase }

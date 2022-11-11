@@ -1,9 +1,12 @@
 use rust_decimal::Decimal;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InvoiceItem {
-    pub id: String,
-    user_id: String,
-    value: Decimal,
+    pub id: Uuid,
+    pub description: String,
+    pub quantity: i32,
+    pub amount: Decimal,
+    pub currency: String,
 }
