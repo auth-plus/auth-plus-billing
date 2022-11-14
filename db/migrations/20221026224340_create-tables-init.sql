@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS invoice_item (
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(), 
     "invoice_id" UUID NOT NULL,
     "description" TEXT NOT NULL,
-    "quantity" SMALLINT NOT NULL,
+    "quantity" INT NOT NULL,
     "amount" REAL NOT NULL,
     "currency" TEXT NOT NULL,
     CONSTRAINT pk_ii_id PRIMARY KEY ( id ),

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS gateway (
 
 ALTER TABLE charge
     ADD "gateway_id" UUID NOT NULL,
-    ADD CONSTRAINT FOREIGN KEY fk_c_gateway_id REFERENCES gateway("id");
+    ADD CONSTRAINT fk_c_gateway_id FOREIGN KEY ("gateway_id") REFERENCES gateway("id");
 
 -- migrate:down
 
