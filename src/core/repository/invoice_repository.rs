@@ -1,4 +1,4 @@
-use crate::core::dto::invoice::Invoice;
+use crate::core::dto::invoice::{Invoice, InvoiceStatus};
 use crate::core::dto::invoice_item::InvoiceItem;
 use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingInvoiceError};
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
@@ -55,7 +55,7 @@ async fn list_by_user_id(
     };
     let mapped_list = list.into_iter().fold(Vec::new(), |mut out, curre| {
         let item = InvoiceItem {
-            id: curre.invoice_item_id,
+            id: Some(curre.invoice_item_id),
             amount: Decimal::from_f32(curre.amount).unwrap(),
             currency: curre.currency,
             description: curre.description,
@@ -74,7 +74,7 @@ async fn list_by_user_id(
                 let invoice = Invoice {
                     id: curre.invoice_id,
                     itens: vec![item],
-                    status: curre.status,
+                    status: InvoiceStatus::from(curre.status.as_str()),
                     user_id: curre.user_id,
                 };
                 out.push(invoice);
@@ -125,7 +125,7 @@ async fn create(
     let value = Invoice {
         id,
         itens: itens.clone(),
-        status: String::from("draft"),
+        status: InvoiceStatus::from("draft"),
         user_id: user_id.clone(),
     };
     Ok(value)
@@ -162,10 +162,7 @@ mod test {
     use crate::{
         config::database::get_connection,
         core::{
-            dto::invoice_item::InvoiceItem,
-            usecase::driven::{
-                creating_invoice::CreatingInvoiceError, reading_invoice::ReadingInvoiceError,
-            },
+            dto::invoice_item::InvoiceItem, usecase::driven::reading_invoice::ReadingInvoiceError,
         },
     };
     use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
@@ -230,13 +227,12 @@ mod test {
     async fn should_create_invoices() {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
-        let invoice_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let item_id: Uuid = UUIDv4.fake();
         let description: String = Sentence(3..5).fake();
         let quantity = Faker.fake::<i32>();
         let amount = Faker.fake::<f32>();
-        let currency = String::from("BRL");
+        let currency = "BRL";
         let q_user = format!(
             "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
             user_id.to_string(),
@@ -245,17 +241,37 @@ mod test {
         sqlx::query(&q_user)
             .execute(&conn)
             .await
-            .expect("should_list_invoices: user setup went wrong");
+            .expect("should_create_invoices: user setup went wrong");
         let item = InvoiceItem {
-            id: item_id,
+            id: Some(item_id),
             quantity,
-            description,
+            description: description.clone(),
             amount: Decimal::from_f32_retain(amount).unwrap(),
-            currency,
+            currency: String::from(currency),
         };
         let itens = Vec::from([item]);
 
         let result = create(&conn, &user_id, &itens).await;
+
+        match result {
+            Ok(invoice) => {
+                assert_eq!(invoice.user_id.to_string(), user_id.to_string());
+                assert_eq!(
+                    invoice.itens[0].id.unwrap().to_string(),
+                    item_id.to_string()
+                );
+                assert_eq!(
+                    invoice.itens[0].amount,
+                    Decimal::from_f32_retain(amount).unwrap()
+                );
+                assert_eq!(invoice.itens[0].quantity, quantity);
+                assert_eq!(invoice.itens[0].description, description);
+                assert_eq!(invoice.itens[0].currency, currency);
+            }
+            Err(_) => {
+                panic!("Test went wrong")
+            }
+        };
 
         let q_invoice = sqlx::query_as::<_, InvoiceDAO>(
             "SELECT i.id as  invoice_id,
@@ -280,7 +296,7 @@ mod test {
                 assert_eq!(list[0].user_id.to_string(), user_id.to_string())
             }
             Err(error) => match error {
-                sqlx::Error::RowNotFound => panic!("Test did'n found"),
+                sqlx::Error::RowNotFound => panic!("Test didn't found"),
                 _ => panic!("Test went wrong"),
             },
         };
