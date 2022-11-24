@@ -1,24 +1,18 @@
-use crate::core::{self, dto::invoice_item::InvoiceItem};
+use crate::core;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
-pub struct CreateInvoiceInputSchema {
-    pub external_user_id: String,
-    pub itens: Vec<InvoiceItem>,
+#[derive(Deserialize)]
+pub struct CreateUserInputSchema {
+    pub external_id: String,
 }
 
-#[post("/invoice")]
-pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl Responder {
+#[post("/user")]
+pub async fn create_user(json: web::Json<CreateUserInputSchema>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x
-        .invoice
-        .create
-        .create_invoice(&json.external_user_id, &json.itens)
-        .await
-    {
-        Ok(invoce) => {
-            let json = web::Json(invoce);
+    match core_x.user.create.create_user(&json.external_id).await {
+        Ok(user) => {
+            let json = web::Json(user);
             HttpResponse::Ok().json(json)
         }
         Err(error) => {
@@ -34,9 +28,9 @@ struct GetInvoiceOutputSchema {
 }
 
 #[get("/invoice/{user_id}")]
-pub async fn get_invoice(external_user_id: web::Path<String>) -> impl Responder {
+pub async fn get_invoice(user_id: web::Path<String>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x.invoice.list.get_by_user_id(&external_user_id).await {
+    match core_x.invoice.list.get_by_user_id(&user_id).await {
         Ok(invoces) => {
             let resp = GetInvoiceOutputSchema { invoces };
             let json = web::Json(resp);
