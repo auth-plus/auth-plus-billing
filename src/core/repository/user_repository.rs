@@ -82,9 +82,10 @@ impl UserRepository {
 #[cfg(test)]
 mod test {
 
-    use super::list_by_id;
+    use super::{create, list_by_id};
     use crate::{
-        config::database::get_connection, core::usecase::driven::reading_user::ReadingUserError,
+        config::database::get_connection,
+        core::usecase::driven::{creating_user::CreatingUserError, reading_user::ReadingUserError},
     };
     use fake::{uuid::UUIDv4, Fake};
     use uuid::Uuid;
@@ -113,6 +114,24 @@ mod test {
             Err(error) => match error {
                 ReadingUserError::UserNotFoundError => panic!("Test did'n found"),
                 ReadingUserError::UnmappedError => panic!("Test went wrong"),
+            },
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_create_user() {
+        let conn = get_connection().await;
+        let external_id: Uuid = UUIDv4.fake();
+
+        let result = create(&conn, &external_id).await;
+
+        match result {
+            Ok(user) => {
+                assert_eq!(user.external_id.to_string(), external_id.to_string());
+                assert_eq!(user.id.to_string().is_empty(), false)
+            }
+            Err(error) => match error {
+                CreatingUserError::UnmappedError => panic!("Test went wrong"),
             },
         }
     }

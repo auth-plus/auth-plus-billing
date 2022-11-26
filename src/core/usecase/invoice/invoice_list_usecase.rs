@@ -51,7 +51,10 @@ mod test {
             invoice::{Invoice, InvoiceStatus},
             user::User,
         },
-        usecase::driven::{reading_invoice::MockReadingInvoice, reading_user::MockReadingUser},
+        usecase::driven::{
+            reading_invoice::{MockReadingInvoice, ReadingInvoiceError},
+            reading_user::{MockReadingUser, ReadingUserError},
+        },
     };
     use mockall::predicate;
     use uuid::Uuid;
@@ -98,6 +101,91 @@ mod test {
                 assert_eq!(inv.user_id, resp[0].user_id);
             }
             Err(error) => panic!("Test wen wrong: {}", error),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_uuid_is_wrong() {
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru.expect_list_by_id().times(0);
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri.expect_list_by_user_id().times(0);
+        let invoice_usecase = InvoiceListUsecase {
+            reading_user: Box::new(mock_ru),
+            reading_invoice: Box::new(mock_ri),
+        };
+        let result = invoice_usecase
+            .get_by_user_id("any-hash-that-is-not-uuid")
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_uuid_is_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("external id provided isn't uuid"));
+            }
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_user_provider_went_wrong() {
+        let external_id = Uuid::new_v4();
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru
+            .expect_list_by_id()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Err(ReadingUserError::UserNotFoundError));
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri.expect_list_by_user_id().times(0);
+        let invoice_usecase = InvoiceListUsecase {
+            reading_user: Box::new(mock_ru),
+            reading_invoice: Box::new(mock_ri),
+        };
+        let result = invoice_usecase
+            .get_by_user_id(&external_id.to_string())
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_user_provider_went_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("User Not found"));
+            }
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_invoice_provider_went_wrong() {
+        let id = Uuid::new_v4();
+        let external_id = Uuid::new_v4();
+        let user = User {
+            id,
+            external_id: Uuid::new_v4(),
+        };
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru
+            .expect_list_by_id()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Ok(user.clone()));
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri
+            .expect_list_by_user_id()
+            .with(predicate::eq(user.id))
+            .times(1)
+            .return_const(Err(ReadingInvoiceError::InvoiceNotFoundError));
+        let invoice_usecase = InvoiceListUsecase {
+            reading_user: Box::new(mock_ru),
+            reading_invoice: Box::new(mock_ri),
+        };
+        let result = invoice_usecase
+            .get_by_user_id(&external_id.to_string())
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_invoice_provider_went_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("Invoice Not found"));
+            }
         }
     }
 }
