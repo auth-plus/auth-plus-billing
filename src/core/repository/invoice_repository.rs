@@ -93,8 +93,7 @@ async fn create(
     let id = Uuid::new_v4();
     let q_invoice = format!(
         "INSERT INTO invoice (id, user_id, status) VALUES ('{}','{}', 'draft');",
-        id.to_string(),
-        user_id.to_string()
+        id, user_id
     );
     let r_invoice = sqlx::query(&q_invoice).execute(conn).await;
     match r_invoice {
@@ -104,10 +103,13 @@ async fn create(
             return Err(CreatingInvoiceError::UnmappedError);
         }
     }
+    let mut insert_iten: Vec<InvoiceItem> = Vec::new();
     for it in itens {
+        let item_id = Uuid::new_v4();
         let q_invoice_item = format!(
-            "INSERT INTO invoice_item (invoice_id, description, quantity, amount, currency) VALUES ('{}', '{}', '{}', '{}', '{}');",
-            id.to_string(),
+            "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
+            item_id,
+            id,
             it.description,
             it.quantity,
             it.amount,
@@ -115,7 +117,13 @@ async fn create(
         );
         let r_invoice_item = sqlx::query(&q_invoice_item).execute(conn).await;
         match r_invoice_item {
-            Ok(_) => {}
+            Ok(_) => insert_iten.push(InvoiceItem {
+                id: Some(item_id),
+                amount: it.amount,
+                currency: it.currency.clone(),
+                description: it.description.clone(),
+                quantity: it.quantity,
+            }),
             Err(error) => {
                 tracing::error!("{:?}", error);
                 return Err(CreatingInvoiceError::UnmappedError);
@@ -124,9 +132,9 @@ async fn create(
     }
     let value = Invoice {
         id,
-        itens: itens.clone(),
+        itens: insert_iten,
         status: InvoiceStatus::from("draft"),
-        user_id: user_id.clone(),
+        user_id: *user_id,
     };
     Ok(value)
 }
@@ -228,7 +236,6 @@ mod test {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let item_id: Uuid = UUIDv4.fake();
         let description: String = Sentence(3..5).fake();
         let quantity = Faker.fake::<i32>();
         let amount = Faker.fake::<f32>();
@@ -243,7 +250,7 @@ mod test {
             .await
             .expect("should_create_invoices: user setup went wrong");
         let item = InvoiceItem {
-            id: Some(item_id),
+            id: None,
             quantity,
             description: description.clone(),
             amount: Decimal::from_f32_retain(amount).unwrap(),
@@ -256,10 +263,7 @@ mod test {
         match result {
             Ok(invoice) => {
                 assert_eq!(invoice.user_id.to_string(), user_id.to_string());
-                assert_eq!(
-                    invoice.itens[0].id.unwrap().to_string(),
-                    item_id.to_string()
-                );
+                assert!(invoice.itens[0].id.is_some());
                 assert_eq!(
                     invoice.itens[0].amount,
                     Decimal::from_f32_retain(amount).unwrap()

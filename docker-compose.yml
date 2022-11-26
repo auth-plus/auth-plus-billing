@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       target: dependency
     ports:
-      - '5000:5000'
+      - '5002:5002'
     command: tail -f /dev/null
     env_file:
       - .env

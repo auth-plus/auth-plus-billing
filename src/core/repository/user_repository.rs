@@ -1,4 +1,5 @@
 use crate::core::dto::user::User;
+use crate::core::usecase::driven::creating_user::{CreatingUser, CreatingUserError};
 use crate::core::usecase::driven::reading_user::{ReadingUser, ReadingUserError};
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
@@ -9,6 +10,7 @@ struct UserDAO {
     external_id: Uuid,
 }
 
+#[derive(Clone)]
 pub struct UserRepository {
     conn: PgPool,
 }
@@ -38,10 +40,36 @@ async fn list_by_id(conn: &PgPool, external_id: &Uuid) -> Result<User, ReadingUs
     }
 }
 
+async fn create(conn: &PgPool, external_id: &Uuid) -> Result<User, CreatingUserError> {
+    let user_id = Uuid::new_v4();
+    let q_user = format!(
+        "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
+        user_id, external_id
+    );
+    let result = sqlx::query(&q_user).execute(conn).await;
+    match result {
+        Ok(_) => {
+            let u = User {
+                id: user_id,
+                external_id: *external_id,
+            };
+            Ok(u)
+        }
+        Err(_) => Err(CreatingUserError::UnmappedError),
+    }
+}
+
 #[async_trait::async_trait]
 impl ReadingUser for UserRepository {
     async fn list_by_id(&self, external_id: &Uuid) -> Result<User, ReadingUserError> {
         list_by_id(&self.conn, external_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl CreatingUser for UserRepository {
+    async fn create(&self, external_id: &Uuid) -> Result<User, CreatingUserError> {
+        create(&self.conn, external_id).await
     }
 }
 
