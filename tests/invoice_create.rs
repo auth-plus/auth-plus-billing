@@ -47,4 +47,32 @@ mod invoice_create_tests {
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
     }
+
+    #[actix_web::test]
+    async fn should_fail_when_user_does_not_exist() {
+        let external_id: Uuid = UUIDv4.fake();
+        let quantity = Faker.fake::<i32>();
+        let amount = Faker.fake::<f32>();
+        let description: String = Sentence(3..5).fake();
+        let currency = "BRL";
+        let item = InvoiceItem {
+            id: None,
+            amount: Decimal::from_f32_retain(amount).unwrap(),
+            quantity,
+            description: description.clone(),
+            currency: String::from(currency),
+        };
+        let itens = Vec::from([item]);
+        let payload = CreateInvoiceInputSchema {
+            external_user_id: external_id.to_string(),
+            itens,
+        };
+        let app = test::init_service(App::new().service(invoice::create_invoice)).await;
+        let req = test::TestRequest::post()
+            .uri("/invoice")
+            .set_json(web::Json(payload))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
 }

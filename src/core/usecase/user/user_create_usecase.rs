@@ -31,7 +31,10 @@ impl UserCreateUsecase {
 mod test {
 
     use super::UserCreateUsecase;
-    use crate::core::{dto::user::User, usecase::driven::creating_user::MockCreatingUser};
+    use crate::core::{
+        dto::user::User,
+        usecase::driven::creating_user::{CreatingUserError, MockCreatingUser},
+    };
     use mockall::predicate;
     use uuid::Uuid;
 
@@ -59,7 +62,49 @@ mod test {
                 assert_eq!(user_id, resp.id);
                 assert_eq!(external_id, resp.external_id);
             }
-            Err(error) => panic!("Test went wrong: {}", error),
+            Err(error) => panic!("should_succeed_creating_user test went wrong: {}", error),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_uuid_is_wrong() {
+        let mut mock_cu = MockCreatingUser::new();
+        mock_cu.expect_create().times(0);
+        let user_usecase = UserCreateUsecase {
+            creating_user: Box::new(mock_cu),
+        };
+        let result = user_usecase.create_user("any-hash-that-is-not-uuid").await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_uuid_is_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("external id provided isn't uuid"));
+            }
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_provider_went_wrong() {
+        let external_id = Uuid::new_v4();
+        let mut mock_cu = MockCreatingUser::new();
+        mock_cu
+            .expect_create()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Err(CreatingUserError::UnmappedError));
+        let user_usecase = UserCreateUsecase {
+            creating_user: Box::new(mock_cu),
+        };
+        let result = user_usecase.create_user(&external_id.to_string()).await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_provider_went_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(
+                    error,
+                    String::from("CreatingUserError::UnmappedError Something wrong happen")
+                );
+            }
         }
     }
 }
