@@ -1,4 +1,7 @@
-use crate::core::dto::{charge::Charge, invoice::Invoice, invoice_item::InvoiceItem};
+use crate::core::dto::{
+    charge::{Charge, ChargeStatus},
+    invoice::Invoice,
+};
 use uuid::Uuid;
 
 #[mockall::automock]
@@ -13,7 +16,7 @@ pub trait UpdatingInvoice {
     async fn update(
         &self,
         invoice_id: &Uuid,
-        status: &Vec<InvoiceItem>,
+        status: ChargeStatus,
     ) -> Result<Invoice, UpdatingInvoiceError>;
 }
 
