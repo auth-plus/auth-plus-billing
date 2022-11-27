@@ -58,7 +58,10 @@ mod test {
             invoice_item::InvoiceItem,
             user::User,
         },
-        usecase::driven::{creating_invoice::MockCreatingInvoice, reading_user::MockReadingUser},
+        usecase::driven::{
+            creating_invoice::{CreatingInvoiceError, MockCreatingInvoice},
+            reading_user::{MockReadingUser, ReadingUserError},
+        },
     };
     use fake::{faker::lorem::en::Sentence, Fake, Faker};
     use mockall::predicate;
@@ -118,6 +121,125 @@ mod test {
                 assert_eq!(description, resp.itens[0].description);
             }
             Err(error) => panic!("Test wen wrong: {}", error),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_uuid_is_wrong() {
+        let amount = Faker.fake::<f32>();
+        let description: String = Sentence(3..5).fake();
+        let item = InvoiceItem {
+            id: None,
+            amount: Decimal::from_f32_retain(amount).unwrap(),
+            quantity: Faker.fake::<i32>(),
+            description: description.clone(),
+            currency: String::from("BRL"),
+        };
+        let itens = Vec::from([item]);
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru.expect_list_by_id().times(0);
+        let mut mock_ci = MockCreatingInvoice::new();
+        mock_ci.expect_create().times(0);
+        let invoice_usecase = InvoiceCreateUsecase {
+            reading_user: Box::new(mock_ru),
+            creating_invoice: Box::new(mock_ci),
+        };
+        let result = invoice_usecase
+            .create_invoice("a-hash-not-uuid", &itens)
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_uuid_is_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("external id provided isn't uuid"));
+            }
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_user_provider_went_wrong() {
+        let external_id = Uuid::new_v4();
+        let quantity = Faker.fake::<i32>();
+        let amount = Faker.fake::<f32>();
+        let description: String = Sentence(3..5).fake();
+        let currency = "BRL";
+        let item = InvoiceItem {
+            id: None,
+            amount: Decimal::from_f32_retain(amount).unwrap(),
+            quantity,
+            description: description.clone(),
+            currency: String::from(currency),
+        };
+        let itens = Vec::from([item]);
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru
+            .expect_list_by_id()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Err(ReadingUserError::UserNotFoundError));
+        let mut mock_ci = MockCreatingInvoice::new();
+        mock_ci.expect_create().times(0);
+        let invoice_usecase = InvoiceCreateUsecase {
+            reading_user: Box::new(mock_ru),
+            creating_invoice: Box::new(mock_ci),
+        };
+        let result = invoice_usecase
+            .create_invoice(&external_id.to_string(), &itens)
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_user_provider_went_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("User Not found"));
+            }
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_invoice_provider_went_wrong() {
+        let user_id = Uuid::new_v4();
+        let external_id = Uuid::new_v4();
+        let user = User {
+            id: user_id,
+            external_id: Uuid::new_v4(),
+        };
+        let quantity = Faker.fake::<i32>();
+        let amount = Faker.fake::<f32>();
+        let description: String = Sentence(3..5).fake();
+        let currency = "BRL";
+        let item = InvoiceItem {
+            id: None,
+            amount: Decimal::from_f32_retain(amount).unwrap(),
+            quantity,
+            description: description.clone(),
+            currency: String::from(currency),
+        };
+        let itens = Vec::from([item]);
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru
+            .expect_list_by_id()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Ok(user.clone()));
+        let mut mock_ci = MockCreatingInvoice::new();
+        mock_ci
+            .expect_create()
+            .with(predicate::eq(user_id), predicate::eq(itens.clone()))
+            .times(1)
+            .return_const(Err(CreatingInvoiceError::InvoiceNotFoundError));
+        let invoice_usecase = InvoiceCreateUsecase {
+            reading_user: Box::new(mock_ru),
+            creating_invoice: Box::new(mock_ci),
+        };
+        let result = invoice_usecase
+            .create_invoice(&external_id.to_string(), &itens)
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_invoice_provider_went_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(error, String::from("Invoice Not found"));
+            }
         }
     }
 }
