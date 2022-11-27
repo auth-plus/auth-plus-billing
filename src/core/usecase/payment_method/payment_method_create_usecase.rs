@@ -44,11 +44,9 @@ impl PaymentMethodCreateUsecase {
         match result_pm {
             Ok(pm) => Ok(pm),
             Err(error) => match error {
-                CreatingPaymentMethodError::UnmappedError => {
-                    return Err(String::from(
-                        "ReadingUserError::UnmappedError Something wrong happen",
-                    ))
-                }
+                CreatingPaymentMethodError::UnmappedError => Err(String::from(
+                    "ReadingUserError::UnmappedError Something wrong happen",
+                )),
             },
         }
     }

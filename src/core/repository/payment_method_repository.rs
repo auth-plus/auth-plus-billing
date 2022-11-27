@@ -48,7 +48,7 @@ async fn get_default_by_user_id(
         }
         Err(err) => {
             tracing::error!("PaymentMethodRepository.get_default_by_user_id :{:?}", err);
-            return Err(ReadingPaymentMethodError::UnmappedError);
+            Err(ReadingPaymentMethodError::UnmappedError)
         }
     }
 }
@@ -70,16 +70,16 @@ async fn create(
         Ok(_) => {
             let pm = PaymentMethod {
                 id: payment_method_id,
-                user_id: user_id,
-                is_default: is_default,
-                method: method,
+                user_id,
+                is_default,
+                method,
                 info: info.clone(),
             };
             Ok(pm)
         }
         Err(error) => {
             tracing::error!("{:?}", error);
-            return Err(CreatingPaymentMethodError::UnmappedError);
+            Err(CreatingPaymentMethodError::UnmappedError)
         }
     }
 }
