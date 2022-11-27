@@ -1,6 +1,6 @@
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Serialize, Debug, Clone, Copy)]
@@ -30,11 +30,30 @@ impl fmt::Display for Method {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PixInfo {
+    pub key: String,
+    pub external_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CreditCardInfo {
+    last4digit: String,
+    flag: String,
+    expire_data: String,
+    external_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum PaymentMethodInfo {
+    CreditCardInfo(CreditCardInfo),
+    PixInfo(PixInfo),
+}
 #[derive(Serialize, Clone, Debug)]
 pub struct PaymentMethod {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub is_default: Uuid,
-    pub method: Uuid,
-    pub info: Uuid,
+    pub is_default: bool,
+    pub method: Method,
+    pub info: PaymentMethodInfo,
 }
