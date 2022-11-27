@@ -90,9 +90,9 @@ mod test {
         let itens = Vec::from([item]);
         let invoice = Invoice {
             id: Uuid::new_v4(),
-            status: InvoiceStatus::from("pending"),
+            status: InvoiceStatus::from("draft"),
             user_id,
-            itens: itens.clone(),
+            itens: Vec::from([Uuid::new_v4()]),
         };
         let mut mock_ru = MockReadingUser::new();
         mock_ru
@@ -117,8 +117,7 @@ mod test {
         match result {
             Ok(resp) => {
                 assert_eq!(user_id, resp.user_id);
-                assert_eq!("pending", resp.status.to_string());
-                assert_eq!(description, resp.itens[0].description);
+                assert_eq!("draft", resp.status.to_string());
             }
             Err(error) => panic!("Test wen wrong: {}", error),
         }

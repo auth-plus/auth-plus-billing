@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS payment_method (
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "user_id" UUID NOT NULL,
     "is_default" BOOLEAN DEFAULT TRUE,
-    "type" TEXT NOT NULL, -- could be credit_card, pix, ledger
+    "method" TEXT NOT NULL, -- could be credit_card, pix, ledger
     "info" JSONB NOT NULL, -- should contain credit_card info, or pix key
     CONSTRAINT pk_pm_id PRIMARY KEY ( id ),
     CONSTRAINT fk_pm_user_id FOREIGN KEY("user_id") REFERENCES "user"("id")
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS payment_method (
 CREATE TABLE IF NOT EXISTS charge (
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(), 
     "invoice_id" UUID NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'failed', -- could be failed/progress/succeed
+    "status" TEXT NOT NULL DEFAULT 'progress', -- could be failed/progress/succeed
     "payment_method_id" UUID NOT NULL, 
     CONSTRAINT pk_c_id PRIMARY KEY (id), 
     CONSTRAINT fk_c_invoice_id FOREIGN KEY("invoice_id") REFERENCES invoice("id"), 

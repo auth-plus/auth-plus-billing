@@ -2,8 +2,6 @@ use crate::core::dto::invoice::{Invoice, InvoiceStatus};
 use crate::core::dto::invoice_item::InvoiceItem;
 use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingInvoiceError};
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
-use rust_decimal::prelude::FromPrimitive;
-use rust_decimal::Decimal;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -13,10 +11,6 @@ struct InvoiceDAO {
     user_id: Uuid,
     status: String,
     invoice_item_id: Uuid,
-    description: String,
-    quantity: i32,
-    amount: f32,
-    currency: String,
 }
 
 #[derive(Clone)]
@@ -32,11 +26,7 @@ async fn list_by_user_id(
         "SELECT i.id as  invoice_id,
                 i.user_id,
                 i.status,
-                ii.id as invoice_item_id,
-                ii.description,
-                ii.quantity,
-                ii.amount,
-                ii.currency
+                ii.id as invoice_item_id
             FROM   invoice AS i
                 inner join invoice_item AS ii
                         ON ii.invoice_id = i.id
@@ -54,26 +44,19 @@ async fn list_by_user_id(
         }
     };
     let mapped_list = list.into_iter().fold(Vec::new(), |mut out, curre| {
-        let item = InvoiceItem {
-            id: Some(curre.invoice_item_id),
-            amount: Decimal::from_f32(curre.amount).unwrap(),
-            currency: curre.currency,
-            description: curre.description,
-            quantity: curre.quantity,
-        };
         let clone_out = out.clone();
         match clone_out
             .into_iter()
             .position(|x: Invoice| x.id == curre.invoice_id)
         {
             Some(idx) => {
-                out[idx].itens.push(item);
+                out[idx].itens.push(curre.invoice_item_id);
                 out
             }
             None => {
                 let invoice = Invoice {
                     id: curre.invoice_id,
-                    itens: vec![item],
+                    itens: vec![curre.invoice_item_id],
                     status: InvoiceStatus::from(curre.status.as_str()),
                     user_id: curre.user_id,
                 };
@@ -90,10 +73,10 @@ async fn create(
     user_id: &Uuid,
     itens: &Vec<InvoiceItem>,
 ) -> Result<Invoice, CreatingInvoiceError> {
-    let id = Uuid::new_v4();
+    let invoice_id = Uuid::new_v4();
     let q_invoice = format!(
         "INSERT INTO invoice (id, user_id, status) VALUES ('{}','{}', 'draft');",
-        id, user_id
+        invoice_id, user_id
     );
     let r_invoice = sqlx::query(&q_invoice).execute(conn).await;
     match r_invoice {
@@ -103,13 +86,13 @@ async fn create(
             return Err(CreatingInvoiceError::UnmappedError);
         }
     }
-    let mut insert_iten: Vec<InvoiceItem> = Vec::new();
+    let mut insert_iten: Vec<Uuid> = Vec::new();
     for it in itens {
         let item_id = Uuid::new_v4();
         let q_invoice_item = format!(
             "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
             item_id,
-            id,
+            invoice_id,
             it.description,
             it.quantity,
             it.amount,
@@ -117,13 +100,7 @@ async fn create(
         );
         let r_invoice_item = sqlx::query(&q_invoice_item).execute(conn).await;
         match r_invoice_item {
-            Ok(_) => insert_iten.push(InvoiceItem {
-                id: Some(item_id),
-                amount: it.amount,
-                currency: it.currency.clone(),
-                description: it.description.clone(),
-                quantity: it.quantity,
-            }),
+            Ok(_) => insert_iten.push(item_id),
             Err(error) => {
                 tracing::error!("{:?}", error);
                 return Err(CreatingInvoiceError::UnmappedError);
@@ -131,7 +108,7 @@ async fn create(
         }
     }
     let value = Invoice {
-        id,
+        id: invoice_id,
         itens: insert_iten,
         status: InvoiceStatus::from("draft"),
         user_id: *user_id,
@@ -263,14 +240,7 @@ mod test {
         match result {
             Ok(invoice) => {
                 assert_eq!(invoice.user_id.to_string(), user_id.to_string());
-                assert!(invoice.itens[0].id.is_some());
-                assert_eq!(
-                    invoice.itens[0].amount,
-                    Decimal::from_f32_retain(amount).unwrap()
-                );
-                assert_eq!(invoice.itens[0].quantity, quantity);
-                assert_eq!(invoice.itens[0].description, description);
-                assert_eq!(invoice.itens[0].currency, currency);
+                assert_eq!(invoice.status.to_string(), String::from("draft"));
             }
             Err(_) => {
                 panic!("Test went wrong")
