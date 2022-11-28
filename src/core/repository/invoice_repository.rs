@@ -7,10 +7,9 @@ use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
 struct InvoiceDAO {
-    invoice_id: Uuid,
+    id: Option<Uuid>,
     user_id: Uuid,
     status: String,
-    invoice_item_id: Uuid,
 }
 
 #[derive(Clone)]
@@ -22,50 +21,28 @@ async fn list_by_user_id(
     conn: &PgPool,
     user_id: Uuid,
 ) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-    let result = sqlx::query_as::<_, InvoiceDAO>(
-        "SELECT i.id as  invoice_id,
-                i.user_id,
-                i.status,
-                ii.id as invoice_item_id
-            FROM   invoice AS i
-                inner join invoice_item AS ii
-                        ON ii.invoice_id = i.id
-            WHERE  user_id :: text = $1",
-    )
-    .bind(user_id.to_string())
-    .fetch_all(conn)
-    .await;
-
-    let list = match result {
-        Ok(list) => list,
+    let result =
+        sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1")
+            .bind(user_id.to_string())
+            .fetch_all(conn)
+            .await;
+    match result {
+        Ok(list) => {
+            let list_transformed = list
+                .into_iter()
+                .map(|x| Invoice {
+                    id: x.id.unwrap(),
+                    user_id: x.user_id,
+                    status: InvoiceStatus::from(x.status.as_str()),
+                })
+                .collect();
+            Ok(list_transformed)
+        }
         Err(err) => {
             tracing::error!("InvoiceRepository.list_by_user_id :{:?}", err);
-            return Err(ReadingInvoiceError::UnmappedError);
+            Err(ReadingInvoiceError::UnmappedError)
         }
-    };
-    let mapped_list = list.into_iter().fold(Vec::new(), |mut out, curre| {
-        let clone_out = out.clone();
-        match clone_out
-            .into_iter()
-            .position(|x: Invoice| x.id == curre.invoice_id)
-        {
-            Some(idx) => {
-                out[idx].itens.push(curre.invoice_item_id);
-                out
-            }
-            None => {
-                let invoice = Invoice {
-                    id: curre.invoice_id,
-                    itens: vec![curre.invoice_item_id],
-                    status: InvoiceStatus::from(curre.status.as_str()),
-                    user_id: curre.user_id,
-                };
-                out.push(invoice);
-                out
-            }
-        }
-    });
-    Ok(mapped_list)
+    }
 }
 
 async fn create(
@@ -102,6 +79,7 @@ async fn create(
         match r_invoice_item {
             Ok(_) => insert_iten.push(item_id),
             Err(error) => {
+                println!("{:?}", error);
                 tracing::error!("{:?}", error);
                 return Err(CreatingInvoiceError::UnmappedError);
             }
@@ -109,17 +87,41 @@ async fn create(
     }
     let value = Invoice {
         id: invoice_id,
-        itens: insert_iten,
         status: InvoiceStatus::from("draft"),
         user_id: *user_id,
     };
     Ok(value)
 }
 
+async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError> {
+    let result = sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  id :: text = $1")
+        .bind(invoice_id.to_string())
+        .fetch_one(conn)
+        .await;
+    match result {
+        Ok(invoice) => {
+            let id = invoice.id.unwrap();
+            let item = Invoice {
+                id,
+                user_id: invoice.user_id,
+                status: InvoiceStatus::from(invoice.status.as_str()),
+            };
+            Ok(item)
+        }
+        Err(err) => {
+            tracing::error!("InvoiceRepository.list_by_user_id :{:?}", err);
+            Err(ReadingInvoiceError::UnmappedError)
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl ReadingInvoice for InvoiceRepository {
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Invoice>, ReadingInvoiceError> {
         list_by_user_id(&self.conn, user_id).await
+    }
+    async fn get_by_id(&self, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError> {
+        get_by_id(&self.conn, invoice_id).await
     }
 }
 
@@ -143,12 +145,10 @@ impl InvoiceRepository {
 #[cfg(test)]
 mod test {
 
-    use super::{create, list_by_user_id, InvoiceDAO};
+    use super::{create, get_by_id, list_by_user_id, InvoiceDAO};
     use crate::{
         config::database::get_connection,
-        core::{
-            dto::invoice_item::InvoiceItem, usecase::driven::reading_invoice::ReadingInvoiceError,
-        },
+        core::dto::{invoice::InvoiceStatus, invoice_item::InvoiceItem},
     };
     use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
     use rust_decimal::Decimal;
@@ -160,10 +160,6 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let description: String = Sentence(3..5).fake();
-        let quantity = Faker.fake::<i32>();
-        let amount = Faker.fake::<f32>();
-        let currency = String::from("BRL");
         let q_user = format!(
             "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
             user_id.to_string(),
@@ -182,29 +178,53 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_list_invoices: invoice setup went wrong");
-        let q_invoice_item = format!(
-            "INSERT INTO invoice_item (invoice_id, description, quantity, amount, currency) VALUES ('{}', '{}', '{}', '{}', '{}');",
-            invoice_id.to_string(),
-            description,
-            quantity,
-            amount,
-            currency
-        );
-        sqlx::query(&q_invoice_item)
-            .execute(&conn)
-            .await
-            .expect("should_list_invoices: invoice setup went wrong");
 
         let result = list_by_user_id(&conn, user_id).await;
 
         match result {
             Ok(list) => {
-                assert_eq!(list[0].user_id.to_string(), user_id.to_string())
+                assert_eq!(list[0].user_id.to_string(), user_id.to_string());
+                assert_eq!(list[0].id.to_string(), invoice_id.to_string());
+                assert_eq!(list[0].status, InvoiceStatus::from("pending"));
             }
-            Err(error) => match error {
-                ReadingInvoiceError::InvoiceNotFoundError => panic!("Test did'n found"),
-                ReadingInvoiceError::UnmappedError => panic!("Test went wrong"),
-            },
+            Err(error) => panic!("should_list_invoices test went wrong : {:?}", error),
+        };
+    }
+
+    #[actix_rt::test]
+    async fn should_get_invoice_by_id() {
+        let conn = get_connection().await;
+        let user_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let q_user = format!(
+            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
+            user_id.to_string(),
+            external_id.to_string()
+        );
+        sqlx::query(&q_user)
+            .execute(&conn)
+            .await
+            .expect("should_get_invoice_by_id: user setup went wrong");
+        let q_invoice = format!(
+            "INSERT INTO invoice (id, user_id, status) VALUES ('{}', '{}', 'pending');",
+            invoice_id.to_string(),
+            user_id.to_string(),
+        );
+        sqlx::query(&q_invoice)
+            .execute(&conn)
+            .await
+            .expect("should_get_invoice_by_id: invoice setup went wrong");
+
+        let result = get_by_id(&conn, invoice_id).await;
+
+        match result {
+            Ok(inv) => {
+                assert_eq!(inv.id.to_string(), invoice_id.to_string());
+                assert_eq!(inv.user_id.to_string(), user_id.to_string());
+                assert_eq!(inv.status, InvoiceStatus::from("pending"));
+            }
+            Err(error) => panic!("should_get_invoice_by_id test went wrong : {:?}", error),
         };
     }
 
@@ -214,7 +234,7 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let description: String = Sentence(3..5).fake();
-        let quantity = Faker.fake::<i32>();
+        let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let currency = "BRL";
         let q_user = format!(
@@ -239,40 +259,24 @@ mod test {
 
         match result {
             Ok(invoice) => {
+                assert!(!invoice.id.to_string().is_empty());
                 assert_eq!(invoice.user_id.to_string(), user_id.to_string());
                 assert_eq!(invoice.status.to_string(), String::from("draft"));
             }
-            Err(_) => {
-                panic!("Test went wrong")
-            }
+            Err(error) => panic!("should_create_invoices test went wrong {:?}", error),
         };
 
-        let q_invoice = sqlx::query_as::<_, InvoiceDAO>(
-            "SELECT i.id as  invoice_id,
-                    i.user_id,
-                    i.status,
-                    ii.id as invoice_item_id,
-                    ii.description,
-                    ii.quantity,
-                    ii.amount,
-                    ii.currency
-                FROM   invoice AS i
-                    inner join invoice_item AS ii
-                            ON ii.invoice_id = i.id
-                WHERE  user_id :: text = $1",
-        )
-        .bind(user_id.to_string())
-        .fetch_all(&conn)
-        .await;
+        let q_invoice =
+            sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1")
+                .bind(user_id.to_string())
+                .fetch_all(&conn)
+                .await;
 
         match q_invoice {
             Ok(list) => {
                 assert_eq!(list[0].user_id.to_string(), user_id.to_string())
             }
-            Err(error) => match error {
-                sqlx::Error::RowNotFound => panic!("Test didn't found"),
-                _ => panic!("Test went wrong"),
-            },
+            Err(error) => panic!("should_create_invoices test went wrong {:?}", error),
         };
     }
 }

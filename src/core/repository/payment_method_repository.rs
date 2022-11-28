@@ -63,7 +63,11 @@ async fn create(
     let payment_method_id = Uuid::new_v4();
     let q_invoice = format!(
         "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{:?}');",
-        payment_method_id, user_id, is_default, method, info
+        payment_method_id,
+        user_id,
+        is_default,
+        method,
+        serde_json::to_string(&info).unwrap()
     );
     let r_invoice = sqlx::query(&q_invoice).execute(conn).await;
     match r_invoice {
@@ -116,7 +120,7 @@ impl PaymentMethodRepository {
 #[cfg(test)]
 mod test {
 
-    use super::get_default_by_user_id;
+    use super::{create, get_default_by_user_id};
     use crate::{
         config::database::get_connection,
         core::dto::payment_method::{Method, PaymentMethodInfo, PixInfo},
@@ -153,13 +157,49 @@ mod test {
                 method,
                 serde_json::to_string(&info).unwrap()
             );
-        print!("{:?}", q_payment_method);
         sqlx::query(&q_payment_method)
             .execute(&conn)
             .await
             .expect("should_get_default_payment_method: payment_method setup went wrong");
 
         let result = get_default_by_user_id(&conn, &user_id).await;
+
+        match result {
+            Ok(pm) => {
+                assert_eq!(pm.user_id.to_string(), user_id.to_string());
+                assert!(pm.is_default);
+                assert!(!pm.id.to_string().is_empty());
+                assert_eq!(pm.method.to_string(), method.to_string());
+            }
+            Err(error) => panic!(
+                "should_get_default_payment_method test went wrong: {:?}",
+                error
+            ),
+        };
+    }
+
+    #[actix_rt::test]
+    async fn should_create_payment_method() {
+        let conn = get_connection().await;
+        let user_id: Uuid = UUIDv4.fake();
+        let pix_info = PixInfo {
+            key: String::from("any@email.com"),
+            external_id: String::from("ABCDEFG"),
+        };
+        let info = PaymentMethodInfo::PixInfo(pix_info);
+        let external_id: Uuid = UUIDv4.fake();
+        let method = Method::Pix;
+        let q_user = format!(
+            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
+            user_id.to_string(),
+            external_id.to_string()
+        );
+        sqlx::query(&q_user)
+            .execute(&conn)
+            .await
+            .expect("should_get_default_payment_method: user setup went wrong");
+
+        let result = create(&conn, user_id, true, method, &info).await;
 
         match result {
             Ok(pm) => {

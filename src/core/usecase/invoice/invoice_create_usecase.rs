@@ -76,7 +76,7 @@ mod test {
             id: user_id,
             external_id: Uuid::new_v4(),
         };
-        let quantity = Faker.fake::<i32>();
+        let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";
@@ -92,7 +92,6 @@ mod test {
             id: Uuid::new_v4(),
             status: InvoiceStatus::from("draft"),
             user_id,
-            itens: Vec::from([Uuid::new_v4()]),
         };
         let mut mock_ru = MockReadingUser::new();
         mock_ru
@@ -130,7 +129,7 @@ mod test {
         let item = InvoiceItem {
             id: None,
             amount: Decimal::from_f32_retain(amount).unwrap(),
-            quantity: Faker.fake::<i32>(),
+            quantity: Faker.fake::<u16>(),
             description: description.clone(),
             currency: String::from("BRL"),
         };
@@ -158,7 +157,7 @@ mod test {
     #[actix_rt::test]
     async fn should_fail_when_user_provider_went_wrong() {
         let external_id = Uuid::new_v4();
-        let quantity = Faker.fake::<i32>();
+        let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";
@@ -202,7 +201,7 @@ mod test {
             id: user_id,
             external_id: Uuid::new_v4(),
         };
-        let quantity = Faker.fake::<i32>();
+        let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";

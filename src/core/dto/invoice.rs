@@ -3,7 +3,7 @@ use std::fmt;
 use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(Serialize, Debug, Clone, Copy)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum InvoiceStatus {
     Draft,
     Pending,
@@ -56,5 +56,4 @@ pub struct Invoice {
     pub id: Uuid,
     pub user_id: Uuid,
     pub status: InvoiceStatus,
-    pub itens: Vec<Uuid>,
 }
