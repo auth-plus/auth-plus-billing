@@ -71,7 +71,6 @@ mod test {
             id: Uuid::new_v4(),
             status: InvoiceStatus::Pending,
             user_id: id,
-            itens: Vec::new(),
         }];
         let mut mock_ru = MockReadingUser::new();
         mock_ru

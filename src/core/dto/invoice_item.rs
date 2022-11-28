@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub struct InvoiceItem {
     pub id: Option<Uuid>,
     pub description: String,
-    pub quantity: i32,
+    pub quantity: u16,
     pub amount: Decimal,
     pub currency: String,
 }

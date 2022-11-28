@@ -84,7 +84,7 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn should_fail_when_provider_went_wrong() {
+    async fn should_fail_when_user_provider_went_wrong() {
         let external_id = Uuid::new_v4();
         let mut mock_cu = MockCreatingUser::new();
         mock_cu
@@ -98,7 +98,7 @@ mod test {
         let result = user_usecase.create_user(&external_id.to_string()).await;
 
         match result {
-            Ok(_) => panic!("should_fail_when_provider_went_wrong test went wrong"),
+            Ok(_) => panic!("should_fail_when_user_provider_went_wrong test went wrong"),
             Err(error) => {
                 assert_eq!(
                     error,

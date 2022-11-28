@@ -19,7 +19,7 @@ mod invoice_create_tests {
             user_id.to_string(),
             external_id.to_string()
         );
-        let quantity = Faker.fake::<i32>();
+        let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";
@@ -51,7 +51,7 @@ mod invoice_create_tests {
     #[actix_web::test]
     async fn should_fail_when_user_does_not_exist() {
         let external_id: Uuid = UUIDv4.fake();
-        let quantity = Faker.fake::<i32>();
+        let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";

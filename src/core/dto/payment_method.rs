@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Serialize, Debug, Clone, Copy)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq)]
 pub enum Method {
     Pix,
     CreditCard,
@@ -30,13 +30,13 @@ impl fmt::Display for Method {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PixInfo {
     pub key: String,
     pub external_id: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CreditCardInfo {
     last4digit: String,
     flag: String,
@@ -44,7 +44,7 @@ pub struct CreditCardInfo {
     external_id: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum PaymentMethodInfo {
     CreditCardInfo(CreditCardInfo),
     PixInfo(PixInfo),
