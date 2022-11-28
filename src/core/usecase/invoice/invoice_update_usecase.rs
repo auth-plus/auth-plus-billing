@@ -26,9 +26,13 @@ impl InvoiceUpdateUsecase {
             Ok(invoice) => invoice,
             Err(error) => match error {
                 ReadingInvoiceError::InvoiceNotFoundError => {
-                    return Err(String::from("external id provided isn't uuid"))
+                    return Err(String::from("Invoice not found"))
                 }
-                ReadingInvoiceError::UnmappedError => return Err(String::from("Went Wrong")),
+                ReadingInvoiceError::UnmappedError => {
+                    return Err(String::from(
+                        "ReadingInvoiceError::UnmappedError went wrong",
+                    ))
+                }
             },
         };
         let new_status = InvoiceStatus::from(new_status_str);
@@ -39,7 +43,9 @@ impl InvoiceUpdateUsecase {
         match result_invoice_update {
             Ok(invoice) => Ok(invoice),
             Err(error) => match error {
-                UpdatingInvoiceError::UnmappedError => Err(String::from("Went Wrong")),
+                UpdatingInvoiceError::UnmappedError => Err(String::from(
+                    "UpdatingInvoiceError::UnmappedError went wrong",
+                )),
             },
         }
     }
@@ -68,7 +74,8 @@ mod test {
     use crate::core::{
         dto::invoice::{Invoice, InvoiceStatus},
         usecase::driven::{
-            reading_invoice::MockReadingInvoice, updating_invoice::MockUpdatingInvoice,
+            reading_invoice::{MockReadingInvoice, ReadingInvoiceError},
+            updating_invoice::{MockUpdatingInvoice, UpdatingInvoiceError},
         },
     };
     use mockall::predicate;
@@ -120,6 +127,93 @@ mod test {
             Err(error) => panic!(
                 "should_succeed_updating_invoice test went wrong: {:?}",
                 error
+            ),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_uuid_is_wrong() {
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri.expect_get_by_id().times(0);
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui.expect_update().times(0);
+        let invoice_usecase = InvoiceUpdateUsecase {
+            reading_invoice: Box::new(mock_ri),
+            updating_invoice: Box::new(mock_ui),
+        };
+
+        let result = invoice_usecase.update("any-hash-not-uuid", "pending").await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_uuid_is_wrong test went wrong"),
+            Err(error) => assert_eq!(error, String::from("external id provided isn't uuid")),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_invoice_reading_provider_went_wrong() {
+        let invoice_id = Uuid::new_v4();
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri
+            .expect_get_by_id()
+            .with(predicate::eq(invoice_id))
+            .times(1)
+            .return_const(Err(ReadingInvoiceError::InvoiceNotFoundError));
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui.expect_update().times(0);
+        let invoice_usecase = InvoiceUpdateUsecase {
+            reading_invoice: Box::new(mock_ri),
+            updating_invoice: Box::new(mock_ui),
+        };
+        let result = invoice_usecase
+            .update(invoice_id.to_string().as_str(), "pending")
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_invoice_reading_provider_went_wrong test went wrong"),
+            Err(error) => assert_eq!(error, String::from("Invoice not found")),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_invoice_updating_provider_went_wrong() {
+        let user_id = Uuid::new_v4();
+        let invoice_id = Uuid::new_v4();
+        let invoice = Invoice {
+            id: invoice_id,
+            user_id,
+            status: InvoiceStatus::Draft,
+        };
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri
+            .expect_get_by_id()
+            .with(predicate::eq(invoice_id))
+            .times(1)
+            .return_const(Ok(invoice.clone()));
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui
+            .expect_update()
+            .with(
+                predicate::eq(invoice.id),
+                predicate::eq(InvoiceStatus::Pending),
+            )
+            .times(1)
+            .return_const(Err(UpdatingInvoiceError::UnmappedError));
+        let invoice_usecase = InvoiceUpdateUsecase {
+            reading_invoice: Box::new(mock_ri),
+            updating_invoice: Box::new(mock_ui),
+        };
+        let result = invoice_usecase
+            .update(invoice_id.to_string().as_str(), "pending")
+            .await;
+
+        match result {
+            Ok(_) => {
+                panic!("should_fail_when_invoice_updating_provider_went_wrong test went wrong")
+            }
+            Err(error) => assert_eq!(
+                error,
+                String::from("UpdatingInvoiceError::UnmappedError went wrong")
             ),
         }
     }

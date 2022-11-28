@@ -79,7 +79,6 @@ async fn create(
         match r_invoice_item {
             Ok(_) => insert_iten.push(item_id),
             Err(error) => {
-                println!("{:?}", error);
                 tracing::error!("{:?}", error);
                 return Err(CreatingInvoiceError::UnmappedError);
             }
