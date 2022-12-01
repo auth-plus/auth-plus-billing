@@ -8,9 +8,16 @@ repository = "https://github.com/auth-plus/auth-plus-billing"
 readme = "README.md"
 license = "MIT"
 profiler = true
+default-run = "http"
 
 [[bin]]
 name = "http"
+test = false
+bench = false
+
+
+[[bin]]
+name = "kafka"
 test = false
 bench = false
 
@@ -28,6 +35,11 @@ tracing-subscriber = "0.3"
 mockall = "0.11.2"
 uuid = { version = "1.2.1", features=['v4', 'serde']}
 serde_json = "1.0"
+cmake = "0.1"
+rdkafka = { version = "0.25", features = ["cmake-build"] }
+clap = "4.0.27"
+env_logger = "0.10.0"
+chrono = "0.4.23"
 
 [dev-dependencies]
 actix-rt = "2.7.0"

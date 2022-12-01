@@ -10,9 +10,14 @@ pub struct Database {
     pub url: String,
 }
 
+pub struct Kafka {
+    pub url: String,
+}
+
 pub struct Config {
     pub app: App,
     pub database: Database,
+    pub kafka: Kafka,
 }
 
 pub fn get_config() -> Config {
@@ -35,5 +40,12 @@ pub fn get_config() -> Config {
         db_user, db_pw, db_host, db_port, db_name
     );
     let database = Database { url };
-    Config { app, database }
+    let kafka = Kafka {
+        url: env::var("KAFKA_HOST").expect("KAFKA_HOST is not set"),
+    };
+    Config {
+        app,
+        database,
+        kafka,
+    }
 }
