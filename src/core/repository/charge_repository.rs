@@ -73,16 +73,59 @@ impl ChargeRepository {
 mod test {
 
     use super::create;
-    use crate::{config::database::get_connection, core::dto::charge::ChargeStatus};
+    use crate::{
+        config::database::get_connection,
+        core::dto::{
+            charge::ChargeStatus,
+            payment_method::{Method, PaymentMethodInfo, PixInfo},
+        },
+    };
     use fake::{uuid::UUIDv4, Fake};
     use uuid::Uuid;
 
     #[actix_rt::test]
-    async fn should_create_user() {
+    async fn should_create_charge() {
         let conn = get_connection().await;
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let method = Method::Pix;
+        let pix_info = PixInfo {
+            key: String::from("any@email.com"),
+            external_id: String::from("ABCDEFG"),
+        };
+        let info = PaymentMethodInfo::PixInfo(pix_info);
+        let q_user = format!(
+            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
+            user_id, external_id
+        );
+        sqlx::query(&q_user)
+            .execute(&conn)
+            .await
+            .expect("should_create_charge: user setup went wrong");
 
+        let q_invoice = format!(
+            "INSERT INTO invoice (id, user_id, status) VALUES ('{}', '{}', 'draft');",
+            invoice_id, user_id,
+        );
+        sqlx::query(&q_invoice)
+            .execute(&conn)
+            .await
+            .expect("should_create_charge: invoice setup went wrong");
+
+        let q_payment_method = format!(
+                "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}');",
+                payment_method_id,
+                user_id,
+                true,
+                method,
+                serde_json::to_string(&info).unwrap()
+            );
+        sqlx::query(&q_payment_method)
+            .execute(&conn)
+            .await
+            .expect("should_create_charge: payment_method setup went wrong");
         let result = create(&conn, invoice_id, payment_method_id).await;
 
         match result {
@@ -98,7 +141,7 @@ mod test {
                     ChargeStatus::Progress.to_string()
                 );
             }
-            Err(error) => panic!("should_create_user test went wrong: {:?}", error),
+            Err(error) => panic!("should_create_charge test went wrong: {:?}", error),
         }
     }
 }
