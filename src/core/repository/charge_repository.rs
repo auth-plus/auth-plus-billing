@@ -35,7 +35,10 @@ async fn create(
             payment_method_id,
             status,
         },
-        Err(_) => return Err(CreatingChargeError::UnmappedError),
+        Err(error) => {
+            dbg!(error);
+            return Err(CreatingChargeError::UnmappedError);
+        }
     };
     let message = format!("{:?}", charge);
     let send = producer
@@ -104,7 +107,6 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_create_charge: user setup went wrong");
-
         let q_invoice = format!(
             "INSERT INTO invoice (id, user_id, status) VALUES ('{}', '{}', 'draft');",
             invoice_id, user_id,
@@ -113,7 +115,6 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_create_charge: invoice setup went wrong");
-
         let q_payment_method = format!(
                 "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}');",
                 payment_method_id,
@@ -126,6 +127,7 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_create_charge: payment_method setup went wrong");
+
         let result = create(&conn, invoice_id, payment_method_id).await;
 
         match result {
