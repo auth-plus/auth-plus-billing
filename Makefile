@@ -1,6 +1,6 @@
 .PHONY: infra/up
 infra/up:
-	docker-compose up -d database
+	docker-compose up -d database zookeeper kafka kafdrop
 
 .PHONY: infra/down
 infra/down:

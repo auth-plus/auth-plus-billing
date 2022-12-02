@@ -1,4 +1,8 @@
 FROM rust:1.64.0 as dependency
+
+# KAFKA dependency need this lib
+RUN apt-get update && apt-get -y install cmake protobuf-compiler
+RUN sudo apt-get install libssl-dev
 WORKDIR /app
 COPY . .
 RUN cargo build
