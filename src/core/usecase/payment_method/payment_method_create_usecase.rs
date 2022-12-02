@@ -39,7 +39,7 @@ impl PaymentMethodCreateUsecase {
         };
         let result_pm = self
             .creating_payment_method
-            .create(user.id, is_default, method, &info)
+            .create(user.id, Uuid::new_v4(), is_default, method, &info)
             .await;
         match result_pm {
             Ok(pm) => Ok(pm),
@@ -66,13 +66,15 @@ mod test {
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
+    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use mockall::predicate;
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_creating_payment_method() {
-        let user_id = Uuid::new_v4();
-        let external_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let gateway_id: Uuid = UUIDv4.fake();
         let is_default = true;
         let method = Method::Pix;
         let pix_info = PixInfo {
@@ -102,6 +104,7 @@ mod test {
             .expect_create()
             .with(
                 predicate::eq(user_id),
+                predicate::eq(gateway_id),
                 predicate::eq(is_default),
                 predicate::eq(method),
                 predicate::eq(info.clone()),
@@ -165,7 +168,7 @@ mod test {
         let method = Method::Pix;
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
-            external_id: String::from("ABCDEFG"),
+            external_id: Word().fake(),
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
         let mut mock_ru = MockReadingUser::new();
@@ -194,6 +197,7 @@ mod test {
     async fn should_fail_when_payment_method_provider_went_wrong() {
         let user_id = Uuid::new_v4();
         let external_id = Uuid::new_v4();
+        let gateway_id = Uuid::new_v4();
         let is_default = true;
         let method = Method::Pix;
         let pix_info = PixInfo {
@@ -216,6 +220,7 @@ mod test {
             .expect_create()
             .with(
                 predicate::eq(user_id),
+                predicate::eq(gateway_id),
                 predicate::eq(is_default),
                 predicate::eq(method),
                 predicate::eq(info.clone()),

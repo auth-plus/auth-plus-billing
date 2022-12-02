@@ -83,12 +83,14 @@ mod test {
             payment_method::{Method, PaymentMethodInfo, PixInfo},
         },
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_create_charge() {
         let conn = get_connection().await;
+        let gateway_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
         let user_id: Uuid = UUIDv4.fake();
@@ -115,10 +117,19 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_create_charge: invoice setup went wrong");
+        let q_gateway = format!(
+            "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
+            gateway_id, gateway_name
+        );
+        sqlx::query(&q_gateway)
+            .execute(&conn)
+            .await
+            .expect("should_create_charge: gateway setup went wrong");
         let q_payment_method = format!(
-                "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}');",
+                "INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}','{}');",
                 payment_method_id,
                 user_id,
+                gateway_id,
                 true,
                 method,
                 serde_json::to_string(&info).unwrap()

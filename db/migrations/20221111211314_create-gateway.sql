@@ -6,15 +6,15 @@ CREATE TABLE IF NOT EXISTS gateway (
     CONSTRAINT pk_g_id PRIMARY KEY ( id )
 );
 
-ALTER TABLE charge
+ALTER TABLE payment_method
     ADD "gateway_id" UUID NOT NULL,
-    ADD CONSTRAINT fk_c_gateway_id FOREIGN KEY ("gateway_id") REFERENCES gateway("id");
+    ADD CONSTRAINT fk_pm_gateway_id FOREIGN KEY ("gateway_id") REFERENCES gateway("id");
 
 -- migrate:down
 
-ALTER TABLE charge
-    DROP CONSTRAINT fk_student_cifk_c_gateway_idty_id;
-ALTER TABLE charge
+ALTER TABLE payment_method
+    DROP CONSTRAINT fk_pm_gateway_id;
+ALTER TABLE payment_method
     DROP COLUMN  "gateway_id";
 
 DROP TABLE gateway;

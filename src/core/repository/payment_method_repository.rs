@@ -56,15 +56,17 @@ async fn get_default_by_user_id(
 async fn create(
     conn: &PgPool,
     user_id: Uuid,
+    gateway_id: Uuid,
     is_default: bool,
     method: Method,
     info: &PaymentMethodInfo,
 ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
     let payment_method_id = Uuid::new_v4();
     let q_invoice = format!(
-        "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{:?}');",
+        "INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}','{:?}');",
         payment_method_id,
         user_id,
+        gateway_id,
         is_default,
         method,
         serde_json::to_string(&info).unwrap()
@@ -103,11 +105,12 @@ impl CreatingPaymentMethod for PaymentMethodRepository {
     async fn create(
         &self,
         user_id: Uuid,
+        gateway_id: Uuid,
         is_default: bool,
         method: Method,
         info: &PaymentMethodInfo,
     ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
-        create(&self.conn, user_id, is_default, method, info).await
+        create(&self.conn, user_id, gateway_id, is_default, method, info).await
     }
 }
 
@@ -125,13 +128,15 @@ mod test {
         config::database::get_connection,
         core::dto::payment_method::{Method, PaymentMethodInfo, PixInfo},
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_get_default_payment_method() {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
+        let gateway_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -149,14 +154,23 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_get_default_payment_method: user setup went wrong");
+        let q_gateway = format!(
+            "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
+            gateway_id, gateway_name
+        );
+        sqlx::query(&q_gateway)
+            .execute(&conn)
+            .await
+            .expect("should_get_default_payment_method: gateway setup went wrong");
         let q_payment_method = format!(
-                "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}');",
-                payment_method_id,
-                user_id,
-                true,
-                method,
-                serde_json::to_string(&info).unwrap()
-            );
+            "INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}','{}');",
+            payment_method_id,
+            user_id,
+            gateway_id,
+            true,
+            method,
+            serde_json::to_string(&info).unwrap()
+        );
         sqlx::query(&q_payment_method)
             .execute(&conn)
             .await
@@ -182,6 +196,8 @@ mod test {
     async fn should_create_payment_method() {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
+        let gateway_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -198,8 +214,16 @@ mod test {
             .execute(&conn)
             .await
             .expect("should_get_default_payment_method: user setup went wrong");
+        let q_gateway = format!(
+            "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
+            gateway_id, gateway_name
+        );
+        sqlx::query(&q_gateway)
+            .execute(&conn)
+            .await
+            .expect("should_get_default_payment_method: gateway setup went wrong");
 
-        let result = create(&conn, user_id, true, method, &info).await;
+        let result = create(&conn, user_id, gateway_id, true, method, &info).await;
 
         match result {
             Ok(pm) => {
