@@ -2,6 +2,7 @@ use crate::core::dto::invoice::{Invoice, InvoiceStatus};
 use crate::core::dto::invoice_item::InvoiceItem;
 use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingInvoiceError};
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
+use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingInvoiceError};
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -114,6 +115,34 @@ async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingIn
     }
 }
 
+async fn update(
+    conn: &PgPool,
+    invoice_id: Uuid,
+    status: InvoiceStatus,
+) -> Result<Invoice, UpdatingInvoiceError> {
+    let q_invoice = format!(
+        "UPDATE invoice SET status = '{}' WHERE id :: text = '{}' RETURNING id, user_id, status;",
+        status, invoice_id,
+    );
+    let result_invoice = sqlx::query_as::<_, InvoiceDAO>(&q_invoice)
+        .fetch_one(conn)
+        .await;
+    match result_invoice {
+        Ok(r) => {
+            let item = Invoice {
+                id: invoice_id,
+                user_id: r.user_id,
+                status,
+            };
+            Ok(item)
+        }
+        Err(error) => {
+            tracing::error!("{:?}", error);
+            return Err(UpdatingInvoiceError::UnmappedError);
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl ReadingInvoice for InvoiceRepository {
     async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Invoice>, ReadingInvoiceError> {
@@ -132,6 +161,17 @@ impl CreatingInvoice for InvoiceRepository {
         itens: &Vec<InvoiceItem>,
     ) -> Result<Invoice, CreatingInvoiceError> {
         create(&self.conn, user_id, itens).await
+    }
+}
+
+#[async_trait::async_trait]
+impl UpdatingInvoice for InvoiceRepository {
+    async fn update(
+        &self,
+        invoice_id: Uuid,
+        status: InvoiceStatus,
+    ) -> Result<Invoice, UpdatingInvoiceError> {
+        update(&self.conn, invoice_id, status).await
     }
 }
 

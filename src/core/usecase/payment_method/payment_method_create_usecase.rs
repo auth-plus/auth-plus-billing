@@ -4,12 +4,14 @@ use crate::core::{
     dto::payment_method::{Method, PaymentMethod, PaymentMethodInfo},
     usecase::driven::{
         creating_payment_method::{CreatingPaymentMethod, CreatingPaymentMethodError},
+        reading_gateway::{ReadingGateway, ReadingGatewayError},
         reading_user::{ReadingUser, ReadingUserError},
     },
 };
 
 pub struct PaymentMethodCreateUsecase {
     pub reading_user: Box<dyn ReadingUser>,
+    pub reading_gateway: Box<dyn ReadingGateway>,
     pub creating_payment_method: Box<dyn CreatingPaymentMethod>,
 }
 
@@ -37,9 +39,20 @@ impl PaymentMethodCreateUsecase {
                 }
             },
         };
+        let result_gateway = self.reading_gateway.get_priority_list().await;
+        let gateway = match result_gateway {
+            Ok(list) => list[0].clone(),
+            Err(error) => match error {
+                ReadingGatewayError::UnmappedError => {
+                    return Err(String::from(
+                        "ReadingGatewayError::UnmappedError Something wrong happen",
+                    ))
+                }
+            },
+        };
         let result_pm = self
             .creating_payment_method
-            .create(user.id, Uuid::new_v4(), is_default, method, &info)
+            .create(user.id, gateway.id, is_default, method, &info)
             .await;
         match result_pm {
             Ok(pm) => Ok(pm),
@@ -58,11 +71,13 @@ mod test {
     use super::PaymentMethodCreateUsecase;
     use crate::core::{
         dto::{
+            gateway::Gateway,
             payment_method::{Method, PaymentMethod, PaymentMethodInfo, PixInfo},
             user::User,
         },
         usecase::driven::{
             creating_payment_method::{CreatingPaymentMethodError, MockCreatingPaymentMethod},
+            reading_gateway::MockReadingGateway,
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
@@ -75,11 +90,16 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let gateway_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
         let is_default = true;
         let method = Method::Pix;
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
+        };
+        let gateway = Gateway {
+            id: gateway_id,
+            name: gateway_name,
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
         let user = User {
@@ -99,6 +119,11 @@ mod test {
             .with(predicate::eq(external_id))
             .times(1)
             .return_const(Ok(user.clone()));
+        let mut mock_rg = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .times(1)
+            .return_const(Ok(Vec::from([gateway])));
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm
             .expect_create()
@@ -113,6 +138,7 @@ mod test {
             .return_const(Ok(pm.clone()));
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
+            reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
@@ -145,10 +171,13 @@ mod test {
         let info = PaymentMethodInfo::PixInfo(pix_info);
         let mut mock_ru = MockReadingUser::new();
         mock_ru.expect_list_by_id().times(0);
+        let mut mock_rg = MockReadingGateway::new();
+        mock_rg.expect_get_priority_list().times(0);
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm.expect_create().times(0);
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
+            reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
@@ -177,10 +206,13 @@ mod test {
             .with(predicate::eq(external_id))
             .times(1)
             .return_const(Err(ReadingUserError::UserNotFoundError));
+        let mut mock_rg = MockReadingGateway::new();
+        mock_rg.expect_get_priority_list().times(0);
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm.expect_create().times(0);
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
+            reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
@@ -198,6 +230,7 @@ mod test {
         let user_id = Uuid::new_v4();
         let external_id = Uuid::new_v4();
         let gateway_id = Uuid::new_v4();
+        let gateway_name: String = Word().fake();
         let is_default = true;
         let method = Method::Pix;
         let pix_info = PixInfo {
@@ -205,6 +238,10 @@ mod test {
             external_id: String::from("ABCDEFG"),
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
+        let gateway = Gateway {
+            id: gateway_id,
+            name: gateway_name,
+        };
         let user = User {
             id: user_id,
             external_id,
@@ -215,6 +252,11 @@ mod test {
             .with(predicate::eq(external_id))
             .times(1)
             .return_const(Ok(user.clone()));
+        let mut mock_rg = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .times(1)
+            .return_const(Ok(Vec::from([gateway])));
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm
             .expect_create()
@@ -229,6 +271,7 @@ mod test {
             .return_const(Err(CreatingPaymentMethodError::UnmappedError));
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
+            reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
