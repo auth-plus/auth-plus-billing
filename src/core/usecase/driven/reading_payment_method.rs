@@ -12,6 +12,5 @@ pub trait ReadingPaymentMethod {
 
 #[derive(Debug, Clone, Copy)]
 pub enum ReadingPaymentMethodError {
-    MethodUnexpectederror,
     UnmappedError,
 }

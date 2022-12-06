@@ -2,6 +2,7 @@ use crate::core::dto::invoice::{Invoice, InvoiceStatus};
 use crate::core::dto::invoice_item::InvoiceItem;
 use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingInvoiceError};
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
+use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingInvoiceError};
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -108,8 +109,36 @@ async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingIn
             Ok(item)
         }
         Err(err) => {
-            tracing::error!("InvoiceRepository.list_by_user_id :{:?}", err);
+            tracing::error!("InvoiceRepository.get_by_id :{:?}", err);
             Err(ReadingInvoiceError::UnmappedError)
+        }
+    }
+}
+
+async fn update(
+    conn: &PgPool,
+    invoice_id: Uuid,
+    status: InvoiceStatus,
+) -> Result<Invoice, UpdatingInvoiceError> {
+    let q_invoice = format!(
+        "UPDATE invoice SET status = '{}' WHERE id :: text = '{}' RETURNING id, user_id, status;",
+        status, invoice_id,
+    );
+    let result_invoice = sqlx::query_as::<_, InvoiceDAO>(&q_invoice)
+        .fetch_one(conn)
+        .await;
+    match result_invoice {
+        Ok(r) => {
+            let item = Invoice {
+                id: invoice_id,
+                user_id: r.user_id,
+                status,
+            };
+            Ok(item)
+        }
+        Err(error) => {
+            tracing::error!("{:?}", error);
+            Err(UpdatingInvoiceError::UnmappedError)
         }
     }
 }
@@ -135,6 +164,17 @@ impl CreatingInvoice for InvoiceRepository {
     }
 }
 
+#[async_trait::async_trait]
+impl UpdatingInvoice for InvoiceRepository {
+    async fn update(
+        &self,
+        invoice_id: Uuid,
+        status: InvoiceStatus,
+    ) -> Result<Invoice, UpdatingInvoiceError> {
+        update(&self.conn, invoice_id, status).await
+    }
+}
+
 impl InvoiceRepository {
     pub fn new(conn: PgPool) -> Self {
         InvoiceRepository { conn }
@@ -147,7 +187,10 @@ mod test {
     use super::{create, get_by_id, list_by_user_id, InvoiceDAO};
     use crate::{
         config::database::get_connection,
-        core::dto::{invoice::InvoiceStatus, invoice_item::InvoiceItem},
+        core::{
+            dto::{invoice::InvoiceStatus, invoice_item::InvoiceItem},
+            repository::helpers::{create_invoice, create_user, delete_invoice, delete_user},
+        },
     };
     use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
     use rust_decimal::Decimal;
@@ -159,22 +202,10 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_list_invoices: user setup went wrong");
-        let q_invoice = format!(
-            "INSERT INTO invoice (id, user_id, status) VALUES ('{}', '{}', 'pending');",
-            invoice_id.to_string(),
-            user_id.to_string(),
-        );
-        sqlx::query(&q_invoice)
-            .execute(&conn)
+        create_invoice(&conn, invoice_id, user_id, InvoiceStatus::Draft)
             .await
             .expect("should_list_invoices: invoice setup went wrong");
 
@@ -184,10 +215,16 @@ mod test {
             Ok(list) => {
                 assert_eq!(list[0].user_id.to_string(), user_id.to_string());
                 assert_eq!(list[0].id.to_string(), invoice_id.to_string());
-                assert_eq!(list[0].status, InvoiceStatus::from("pending"));
+                assert_eq!(list[0].status, InvoiceStatus::Draft);
             }
             Err(error) => panic!("should_list_invoices test went wrong : {:?}", error),
         };
+        delete_invoice(&conn, invoice_id)
+            .await
+            .expect("should_list_invoices: invoice remove went wrong");
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_list_invoices: user remove went wrong");
     }
 
     #[actix_rt::test]
@@ -196,22 +233,10 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_get_invoice_by_id: user setup went wrong");
-        let q_invoice = format!(
-            "INSERT INTO invoice (id, user_id, status) VALUES ('{}', '{}', 'pending');",
-            invoice_id.to_string(),
-            user_id.to_string(),
-        );
-        sqlx::query(&q_invoice)
-            .execute(&conn)
+        create_invoice(&conn, invoice_id, user_id, InvoiceStatus::Pending)
             .await
             .expect("should_get_invoice_by_id: invoice setup went wrong");
 
@@ -225,6 +250,13 @@ mod test {
             }
             Err(error) => panic!("should_get_invoice_by_id test went wrong : {:?}", error),
         };
+
+        delete_invoice(&conn, invoice_id)
+            .await
+            .expect("should_get_invoice_by_id: invoice remove went wrong");
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_get_invoice_by_id: user remove went wrong");
     }
 
     #[actix_rt::test]
@@ -236,13 +268,7 @@ mod test {
         let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let currency = "BRL";
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_invoices: user setup went wrong");
         let item = InvoiceItem {
@@ -261,21 +287,28 @@ mod test {
                 assert!(!invoice.id.to_string().is_empty());
                 assert_eq!(invoice.user_id.to_string(), user_id.to_string());
                 assert_eq!(invoice.status.to_string(), String::from("draft"));
-            }
-            Err(error) => panic!("should_create_invoices test went wrong {:?}", error),
-        };
 
-        let q_invoice =
-            sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1")
+                let q_invoice = sqlx::query_as::<_, InvoiceDAO>(
+                    "SELECT * FROM invoice WHERE  user_id :: text = $1",
+                )
                 .bind(user_id.to_string())
                 .fetch_all(&conn)
                 .await;
-
-        match q_invoice {
-            Ok(list) => {
-                assert_eq!(list[0].user_id.to_string(), user_id.to_string())
+                match q_invoice {
+                    Ok(list) => {
+                        assert_eq!(list[0].user_id.to_string(), user_id.to_string());
+                    }
+                    Err(error) => panic!("should_create_invoices test went wrong {:?}", error),
+                };
+                delete_invoice(&conn, invoice.id)
+                    .await
+                    .expect("should_get_invoice_by_id: invoice remove went wrong");
             }
             Err(error) => panic!("should_create_invoices test went wrong {:?}", error),
         };
+
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_get_invoice_by_id: user remove went wrong");
     }
 }
