@@ -2,6 +2,7 @@ use sqlx::{postgres::PgQueryResult, Pool, Postgres};
 use uuid::Uuid;
 
 use crate::core::dto::{
+    charge::ChargeStatus,
     invoice::InvoiceStatus,
     payment_method::{Method, PaymentMethodInfo},
 };
@@ -104,10 +105,49 @@ pub async fn delete_payment_method(
     sqlx::query(&q_payment_method).execute(conn).await
 }
 
+pub async fn create_charge(
+    conn: &Pool<Postgres>,
+    charge_id: Uuid,
+    invoice_id: Uuid,
+    payment_method_id: Uuid,
+    status: ChargeStatus,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let q_charge = format!(
+        "INSERT INTO charge (id, invoice_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}');",
+        charge_id,
+        invoice_id,
+        payment_method_id,
+        status
+    );
+    sqlx::query(&q_charge).execute(conn).await
+}
+
 pub async fn delete_charge(
     conn: &Pool<Postgres>,
     charge_id: Uuid,
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_charge = format!("DELETE FROM charge WHERE id :: text = '{}';", charge_id);
     sqlx::query(&q_charge).execute(conn).await
+}
+
+#[cfg(test)]
+mod test {
+    use fake::{uuid::UUIDv4, Fake};
+    use uuid::Uuid;
+
+    use crate::config::database::get_connection;
+
+    use super::create_user;
+
+    #[actix_rt::test]
+    async fn should_create_user() {
+        let conn = get_connection().await;
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let result = create_user(&conn, user_id, external_id).await;
+        match result {
+            Ok(_) => {}
+            Err(error) => panic!("should_create_user test went wrong: {:?}", error),
+        }
+    }
 }

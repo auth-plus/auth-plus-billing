@@ -4,7 +4,7 @@ mod invoice_list_tests {
         config::database::get_connection,
         core::{
             dto::invoice::InvoiceStatus,
-            repository::helpers::{create_invoice, create_user, delete_invoice, delete_user},
+            repository::orm::{create_invoice, create_user, delete_invoice, delete_user},
         },
         presentation::http::routes::invoice,
     };

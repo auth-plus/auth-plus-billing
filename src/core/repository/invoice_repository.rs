@@ -60,7 +60,7 @@ async fn create(
     match r_invoice {
         Ok(_) => {}
         Err(error) => {
-            tracing::error!("{:?}", error);
+            tracing::error!("InvoiceRepository.create :{:?}", error);
             return Err(CreatingInvoiceError::UnmappedError);
         }
     }
@@ -80,7 +80,7 @@ async fn create(
         match r_invoice_item {
             Ok(_) => insert_iten.push(item_id),
             Err(error) => {
-                tracing::error!("{:?}", error);
+                tracing::error!("InvoiceRepository.create :{:?}", error);
                 return Err(CreatingInvoiceError::UnmappedError);
             }
         }
@@ -137,7 +137,7 @@ async fn update(
             Ok(item)
         }
         Err(error) => {
-            tracing::error!("{:?}", error);
+            tracing::error!("InvoiceRepository.update :{:?}", error);
             Err(UpdatingInvoiceError::UnmappedError)
         }
     }
@@ -189,7 +189,7 @@ mod test {
         config::database::get_connection,
         core::{
             dto::{invoice::InvoiceStatus, invoice_item::InvoiceItem},
-            repository::helpers::{create_invoice, create_user, delete_invoice, delete_user},
+            repository::orm::{create_invoice, create_user, delete_invoice, delete_user},
         },
     };
     use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};

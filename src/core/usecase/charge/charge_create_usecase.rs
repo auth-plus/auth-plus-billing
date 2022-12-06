@@ -82,13 +82,16 @@ mod test {
             reading_payment_method::MockReadingPaymentMethod,
         },
     };
+    use fake::{uuid::UUIDv4, Fake};
     use mockall::predicate;
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_creating_charge() {
-        let user_id = Uuid::new_v4();
-        let invoice_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
+        let payment_method_id: Uuid = UUIDv4.fake();
+        let charge_id: Uuid = UUIDv4.fake();
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -100,14 +103,14 @@ mod test {
             status: InvoiceStatus::Draft,
         };
         let payment_method = PaymentMethod {
-            id: Uuid::new_v4(),
+            id: payment_method_id,
             user_id,
             is_default: true,
             method: Method::Pix,
             info,
         };
         let charge = Charge {
-            id: Uuid::new_v4(),
+            id: charge_id,
             invoice_id,
             payment_method_id: payment_method.id,
             status: ChargeStatus::Progress,

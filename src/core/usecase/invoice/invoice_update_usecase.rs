@@ -78,13 +78,14 @@ mod test {
             updating_invoice::{MockUpdatingInvoice, UpdatingInvoiceError},
         },
     };
+    use fake::{uuid::UUIDv4, Fake};
     use mockall::predicate;
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_updating_invoice() {
-        let user_id = Uuid::new_v4();
-        let invoice_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
         let invoice = Invoice {
             id: invoice_id,
             user_id,
@@ -152,7 +153,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_invoice_reading_provider_went_wrong() {
-        let invoice_id = Uuid::new_v4();
+        let invoice_id: Uuid = UUIDv4.fake();
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
             .expect_get_by_id()
@@ -177,8 +178,8 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_invoice_updating_provider_went_wrong() {
-        let user_id = Uuid::new_v4();
-        let invoice_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
         let invoice = Invoice {
             id: invoice_id,
             user_id,

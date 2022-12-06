@@ -56,17 +56,15 @@ mod test {
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
+    use fake::{uuid::UUIDv4, Fake};
     use mockall::predicate;
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_listing_invoice_by_user() {
-        let id = Uuid::new_v4();
-        let external_id = Uuid::new_v4();
-        let user = User {
-            id,
-            external_id: Uuid::new_v4(),
-        };
+        let id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let user = User { id, external_id };
         let invoices = vec![Invoice {
             id: Uuid::new_v4(),
             status: InvoiceStatus::Pending,
@@ -127,7 +125,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_user_provider_went_wrong() {
-        let external_id = Uuid::new_v4();
+        let external_id: Uuid = UUIDv4.fake();
         let mut mock_ru = MockReadingUser::new();
         mock_ru
             .expect_list_by_id()
@@ -154,12 +152,9 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_invoice_provider_went_wrong() {
-        let id = Uuid::new_v4();
-        let external_id = Uuid::new_v4();
-        let user = User {
-            id,
-            external_id: Uuid::new_v4(),
-        };
+        let id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let user = User { id, external_id };
         let mut mock_ru = MockReadingUser::new();
         mock_ru
             .expect_list_by_id()

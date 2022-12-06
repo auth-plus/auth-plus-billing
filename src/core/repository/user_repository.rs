@@ -33,7 +33,7 @@ async fn list_by_id(conn: &PgPool, external_id: &Uuid) -> Result<User, ReadingUs
         Err(err) => match err {
             sqlx::Error::RowNotFound => Err(ReadingUserError::UserNotFoundError),
             error => {
-                tracing::error!("{:?}", error);
+                tracing::error!("UserRepository.list_by_id :{:?}", error);
                 Err(ReadingUserError::UnmappedError)
             }
         },
@@ -55,7 +55,10 @@ async fn create(conn: &PgPool, external_id: &Uuid) -> Result<User, CreatingUserE
             };
             Ok(u)
         }
-        Err(_) => Err(CreatingUserError::UnmappedError),
+        Err(error) => {
+            tracing::error!("UserRepository.create :{:?}", error);
+            Err(CreatingUserError::UnmappedError)
+        }
     }
 }
 
@@ -85,10 +88,7 @@ mod test {
     use super::{create, list_by_id};
     use crate::{
         config::database::get_connection,
-        core::{
-            repository::helpers::{create_user, delete_user},
-            usecase::driven::{creating_user::CreatingUserError, reading_user::ReadingUserError},
-        },
+        core::repository::orm::{create_user, delete_user},
     };
     use fake::{uuid::UUIDv4, Fake};
     use uuid::Uuid;
@@ -108,10 +108,7 @@ mod test {
             Ok(user) => {
                 assert_eq!(user.id.to_string(), user_id.to_string())
             }
-            Err(error) => match error {
-                ReadingUserError::UserNotFoundError => panic!("Test did'n found"),
-                ReadingUserError::UnmappedError => panic!("Test went wrong"),
-            },
+            Err(error) => panic!("should_get_user_by_external test went wrong: {:?}", error),
         };
         delete_user(&conn, user_id)
             .await
@@ -133,9 +130,7 @@ mod test {
                     .await
                     .expect("should_create_user: user remove went wrong");
             }
-            Err(error) => match error {
-                CreatingUserError::UnmappedError => panic!("Test went wrong"),
-            },
+            Err(error) => panic!("should_create_user test went wrong: {:?}", error),
         }
     }
 }

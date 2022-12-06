@@ -34,7 +34,7 @@ async fn create(
             Ok(item)
         }
         Err(error) => {
-            tracing::error!("{:?}", error);
+            tracing::error!("ChargeRepository.create :{:?}", error);
             Err(CreatingChargeError::UnmappedError)
         }
     }
@@ -69,7 +69,7 @@ mod test {
                 invoice::InvoiceStatus,
                 payment_method::{Method, PaymentMethodInfo, PixInfo},
             },
-            repository::helpers::{
+            repository::orm::{
                 create_gateway, create_invoice, create_payment_method, create_user, delete_charge,
                 delete_gateway, delete_invoice, delete_payment_method, delete_user,
             },

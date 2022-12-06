@@ -63,8 +63,8 @@ async fn create(
 ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
     let payment_method_id = Uuid::new_v4();
     let inser_info = Json(info);
-    let r_invoice = sqlx::query("INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ($1,$2,$3,$4,$5,$6)").bind(payment_method_id).bind(user_id).bind(gateway_id).bind(is_default).bind(method.to_string()).bind(inser_info).execute(conn).await;
-    match r_invoice {
+    let result = sqlx::query("INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ($1,$2,$3,$4,$5,$6)").bind(payment_method_id).bind(user_id).bind(gateway_id).bind(is_default).bind(method.to_string()).bind(inser_info).execute(conn).await;
+    match result {
         Ok(_) => {
             let pm = PaymentMethod {
                 id: payment_method_id,
@@ -76,7 +76,7 @@ async fn create(
             Ok(pm)
         }
         Err(error) => {
-            tracing::error!("{:?}", error);
+            tracing::error!("PaymentMethodRepository.create :{:?}", error);
             Err(CreatingPaymentMethodError::UnmappedError)
         }
     }
@@ -120,7 +120,7 @@ mod test {
         config::database::get_connection,
         core::{
             dto::payment_method::{Method, PaymentMethodInfo, PixInfo},
-            repository::helpers::{
+            repository::orm::{
                 create_gateway, create_payment_method, create_user, delete_gateway,
                 delete_payment_method, delete_user,
             },

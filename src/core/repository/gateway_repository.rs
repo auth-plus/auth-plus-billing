@@ -55,7 +55,7 @@ mod test {
     use super::get_priority_list;
     use crate::{
         config::database::get_connection,
-        core::repository::helpers::{create_gateway, delete_gateway},
+        core::repository::orm::{create_gateway, delete_gateway},
     };
     use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use uuid::Uuid;
