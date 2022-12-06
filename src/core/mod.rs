@@ -35,13 +35,13 @@ pub async fn get_core() -> Core {
     let invoice_repository = repository::invoice_repository::InvoiceRepository::new(conn.clone());
     let user_repository = repository::user_repository::UserRepository::new(conn.clone());
     let payment_method_repository =
-        repository::payment_method_repository::PaymentMethodRepository::new(conn.clone());
+        repository::payment_method_repository::PaymentMethodRepository::new(conn);
 
     //usecases
     let charge_create_usecase = usecase::charge::charge_create_usecase::ChargeCreateUsecase {
         reading_invoice: Box::new(invoice_repository.clone()),
         reading_payment_method: Box::new(payment_method_repository.clone()),
-        creating_charge: Box::new(charge_repository.clone()),
+        creating_charge: Box::new(charge_repository),
     };
     let invoice_create_usecase = usecase::invoice::invoice_create_usecase::InvoiceCreateUsecase {
         reading_user: Box::new(user_repository.clone()),
@@ -53,13 +53,13 @@ pub async fn get_core() -> Core {
     };
     let invoice_update_usecase = usecase::invoice::invoice_update_usecase::InvoiceUpdateUsecase {
         reading_invoice: Box::new(invoice_repository.clone()),
-        updating_invoice: Box::new(invoice_repository.clone()),
+        updating_invoice: Box::new(invoice_repository),
     };
     let payment_method_create_usecase =
         usecase::payment_method::payment_method_create_usecase::PaymentMethodCreateUsecase {
             reading_user: Box::new(user_repository.clone()),
-            reading_gateway: Box::new(gateway_repository.clone()),
-            creating_payment_method: Box::new(payment_method_repository.clone()),
+            reading_gateway: Box::new(gateway_repository),
+            creating_payment_method: Box::new(payment_method_repository),
         };
     let user_create_usecase = usecase::user::user_create_usecase::UserCreateUsecase {
         creating_user: Box::new(user_repository),

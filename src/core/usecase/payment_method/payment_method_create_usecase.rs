@@ -21,7 +21,7 @@ impl PaymentMethodCreateUsecase {
         external_user_id_str: &str,
         is_default: bool,
         method: Method,
-        info: PaymentMethodInfo,
+        info: &PaymentMethodInfo,
     ) -> Result<PaymentMethod, String> {
         let external_user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
@@ -52,7 +52,7 @@ impl PaymentMethodCreateUsecase {
         };
         let result_pm = self
             .creating_payment_method
-            .create(user.id, gateway.id, is_default, method, &info)
+            .create(user.id, gateway.id, is_default, method, info)
             .await;
         match result_pm {
             Ok(pm) => Ok(pm),
@@ -142,7 +142,7 @@ mod test {
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
-            .create(&external_id.to_string(), is_default, method, info.clone())
+            .create(&external_id.to_string(), is_default, method, &info)
             .await;
 
         match result {
@@ -181,7 +181,7 @@ mod test {
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
-            .create("any-hash-not-uuid", is_default, method, info.clone())
+            .create("any-hash-not-uuid", is_default, method, &info)
             .await;
 
         match result {
@@ -216,7 +216,7 @@ mod test {
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
-            .create(&external_id.to_string(), is_default, method, info.clone())
+            .create(&external_id.to_string(), is_default, method, &info)
             .await;
 
         match result {
@@ -275,7 +275,7 @@ mod test {
             creating_payment_method: Box::new(mock_cpm),
         };
         let result = payment_gateway_usecase
-            .create(&external_id.to_string(), is_default, method, info.clone())
+            .create(&external_id.to_string(), is_default, method, &info)
             .await;
 
         match result {

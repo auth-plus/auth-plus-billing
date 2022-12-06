@@ -62,16 +62,8 @@ async fn create(
     info: &PaymentMethodInfo,
 ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
     let payment_method_id = Uuid::new_v4();
-    let q_invoice = format!(
-        "INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}','{:?}');",
-        payment_method_id,
-        user_id,
-        gateway_id,
-        is_default,
-        method,
-        serde_json::to_string(&info).unwrap()
-    );
-    let r_invoice = sqlx::query(&q_invoice).execute(conn).await;
+    let inser_info = Json(info);
+    let r_invoice = sqlx::query("INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ($1,$2,$3,$4,$5,$6)").bind(payment_method_id).bind(user_id).bind(gateway_id).bind(is_default).bind(method.to_string()).bind(inser_info).execute(conn).await;
     match r_invoice {
         Ok(_) => {
             let pm = PaymentMethod {
@@ -126,7 +118,13 @@ mod test {
     use super::{create, get_default_by_user_id};
     use crate::{
         config::database::get_connection,
-        core::dto::payment_method::{Method, PaymentMethodInfo, PixInfo},
+        core::{
+            dto::payment_method::{Method, PaymentMethodInfo, PixInfo},
+            repository::helpers::{
+                create_gateway, create_payment_method, create_user, delete_gateway,
+                delete_payment_method, delete_user,
+            },
+        },
     };
     use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use uuid::Uuid;
@@ -145,36 +143,23 @@ mod test {
         let payment_method_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let method = Method::Pix;
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_get_default_payment_method: user setup went wrong");
-        let q_gateway = format!(
-            "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
-            gateway_id, gateway_name
-        );
-        sqlx::query(&q_gateway)
-            .execute(&conn)
+        create_gateway(&conn, gateway_id, &gateway_name)
             .await
             .expect("should_get_default_payment_method: gateway setup went wrong");
-        let q_payment_method = format!(
-            "INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}','{}');",
+        create_payment_method(
+            &conn,
             payment_method_id,
             user_id,
             gateway_id,
             true,
             method,
-            serde_json::to_string(&info).unwrap()
-        );
-        sqlx::query(&q_payment_method)
-            .execute(&conn)
-            .await
-            .expect("should_get_default_payment_method: payment_method setup went wrong");
+            info,
+        )
+        .await
+        .expect("should_get_default_payment_method: payment_method setup went wrong");
 
         let result = get_default_by_user_id(&conn, &user_id).await;
 
@@ -190,6 +175,15 @@ mod test {
                 error
             ),
         };
+        delete_payment_method(&conn, payment_method_id)
+            .await
+            .expect("should_get_default_payment_method: gateway remove went wrong");
+        delete_gateway(&conn, gateway_id)
+            .await
+            .expect("should_get_default_payment_method: gateway remove went wrong");
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_get_default_payment_method: user remove went wrong");
     }
 
     #[actix_rt::test]
@@ -205,23 +199,12 @@ mod test {
         let info = PaymentMethodInfo::PixInfo(pix_info);
         let external_id: Uuid = UUIDv4.fake();
         let method = Method::Pix;
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
-            .expect("should_get_default_payment_method: user setup went wrong");
-        let q_gateway = format!(
-            "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
-            gateway_id, gateway_name
-        );
-        sqlx::query(&q_gateway)
-            .execute(&conn)
+            .expect("should_create_payment_method: user setup went wrong");
+        create_gateway(&conn, gateway_id, &gateway_name)
             .await
-            .expect("should_get_default_payment_method: gateway setup went wrong");
+            .expect("should_create_payment_method: gateway setup went wrong");
 
         let result = create(&conn, user_id, gateway_id, true, method, &info).await;
 
@@ -231,11 +214,18 @@ mod test {
                 assert!(pm.is_default);
                 assert!(!pm.id.to_string().is_empty());
                 assert_eq!(pm.method.to_string(), method.to_string());
+                delete_payment_method(&conn, pm.id)
+                    .await
+                    .expect("should_create_payment_method: gateway remove went wrong");
             }
-            Err(error) => panic!(
-                "should_get_default_payment_method test went wrong: {:?}",
-                error
-            ),
+            Err(error) => panic!("should_create_payment_method test went wrong: {:?}", error),
         };
+
+        delete_gateway(&conn, gateway_id)
+            .await
+            .expect("should_create_payment_method: gateway remove went wrong");
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_create_payment_method: user remove went wrong");
     }
 }

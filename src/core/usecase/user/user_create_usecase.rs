@@ -31,15 +31,20 @@ impl UserCreateUsecase {
 mod test {
 
     use super::UserCreateUsecase;
-    use crate::core::{
-        dto::user::User,
-        usecase::driven::creating_user::{CreatingUserError, MockCreatingUser},
+    use crate::{
+        config::database::get_connection,
+        core::{
+            dto::user::User,
+            repository::helpers::delete_user,
+            usecase::driven::creating_user::{CreatingUserError, MockCreatingUser},
+        },
     };
     use mockall::predicate;
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_creating_user() {
+        let conn = get_connection().await;
         let user_id = Uuid::new_v4();
         let external_id = Uuid::new_v4();
         let user = User {
@@ -61,6 +66,9 @@ mod test {
             Ok(resp) => {
                 assert_eq!(user_id, resp.id);
                 assert_eq!(external_id, resp.external_id);
+                delete_user(&conn, user_id)
+                    .await
+                    .expect("should_succeed_creating_user: user remove went wrong");
             }
             Err(error) => panic!("should_succeed_creating_user test went wrong: {}", error),
         }

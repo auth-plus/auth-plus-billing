@@ -38,10 +38,10 @@ pub struct PixInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CreditCardInfo {
-    last4digit: String,
-    flag: String,
-    expire_data: String,
-    external_id: String,
+    pub last4digit: String,
+    pub flag: String,
+    pub expire_data: String,
+    pub external_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

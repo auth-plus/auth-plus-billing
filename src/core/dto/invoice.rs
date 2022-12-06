@@ -1,9 +1,9 @@
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Serialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Deserialize)]
 pub enum InvoiceStatus {
     Draft,
     Pending,
@@ -51,7 +51,7 @@ impl fmt::Display for InvoiceStatus {
     }
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, Deserialize)]
 pub struct Invoice {
     pub id: Uuid,
     pub user_id: Uuid,

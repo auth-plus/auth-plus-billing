@@ -53,7 +53,10 @@ impl GatewayRepository {
 mod test {
 
     use super::get_priority_list;
-    use crate::config::database::get_connection;
+    use crate::{
+        config::database::get_connection,
+        core::repository::helpers::{create_gateway, delete_gateway},
+    };
     use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use uuid::Uuid;
 
@@ -62,12 +65,7 @@ mod test {
         let conn = get_connection().await;
         let gateway_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
-        let q_gateway = format!(
-            "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
-            gateway_id, gateway_name
-        );
-        sqlx::query(&q_gateway)
-            .execute(&conn)
+        create_gateway(&conn, gateway_id, &gateway_name)
             .await
             .expect("get_priority_list: gateway setup went wrong");
 
@@ -79,6 +77,10 @@ mod test {
                 assert_eq!(list[0].name, gateway_name);
             }
             Err(error) => panic!("should_get_priority_list test went wrong: {:?}", error),
-        }
+        };
+
+        delete_gateway(&conn, gateway_id)
+            .await
+            .expect("should_get_priority_list: gateway remove went wrong");
     }
 }

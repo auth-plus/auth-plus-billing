@@ -1,7 +1,12 @@
 mod invoice_list_tests {
     use actix_web::{http::StatusCode, test, App};
     use auth_plus_billing::{
-        config::database::get_connection, presentation::http::routes::invoice,
+        config::database::get_connection,
+        core::{
+            dto::invoice::InvoiceStatus,
+            repository::helpers::{create_invoice, create_user, delete_invoice, delete_user},
+        },
+        presentation::http::routes::invoice,
     };
     use fake::{uuid::UUIDv4, Fake};
     use uuid::Uuid;
@@ -10,22 +15,12 @@ mod invoice_list_tests {
     async fn should_list_invoices() {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_list_invoices: user setup went wrong");
-        let q_invoice = format!(
-            "INSERT INTO invoice (user_id, status) VALUES ('{}', 'pending');",
-            user_id.to_string(),
-        );
-        sqlx::query(&q_invoice)
-            .execute(&conn)
+        create_invoice(&conn, invoice_id, user_id, InvoiceStatus::Draft)
             .await
             .expect("should_list_invoices: invoice setup went wrong");
         let app = test::init_service(App::new().service(invoice::get_invoice)).await;
@@ -34,6 +29,12 @@ mod invoice_list_tests {
             .to_request();
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
+        delete_invoice(&conn, invoice_id)
+            .await
+            .expect("should_list_invoices: invoice remove went wrong");
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_list_invoices: user remove went wrong");
     }
 
     #[actix_web::test]
@@ -41,13 +42,7 @@ mod invoice_list_tests {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_return_empty_list: user setup went wrong");
         let app = test::init_service(App::new().service(invoice::get_invoice)).await;
@@ -56,6 +51,9 @@ mod invoice_list_tests {
             .to_request();
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_return_empty_list: user remove went wrong");
     }
 
     #[actix_web::test]
