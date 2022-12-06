@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: deploy
+      target: dependency
     ports:
       - '5002:5002'
     command: tail -f /dev/null

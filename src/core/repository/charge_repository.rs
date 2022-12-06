@@ -1,9 +1,5 @@
-use std::time::Duration;
-
-use crate::config::kafka::get_producer;
 use crate::core::dto::charge::{Charge, ChargeStatus};
 use crate::core::usecase::driven::creating_charge::{CreatingCharge, CreatingChargeError};
-use rdkafka::producer::FutureRecord;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -17,7 +13,6 @@ async fn create(
     invoice_id: Uuid,
     payment_method_id: Uuid,
 ) -> Result<Charge, CreatingChargeError> {
-    let producer = get_producer();
     let charge_id = Uuid::new_v4();
     let status = ChargeStatus::Progress;
     let q_charge = format!(
@@ -28,30 +23,20 @@ async fn create(
         status
     );
     let result_charge = sqlx::query(&q_charge).execute(conn).await;
-    let charge = match result_charge {
-        Ok(_) => Charge {
-            id: charge_id,
-            invoice_id,
-            payment_method_id,
-            status,
-        },
-        Err(error) => {
-            dbg!(error);
-            return Err(CreatingChargeError::UnmappedError);
+    match result_charge {
+        Ok(_) => {
+            let item = Charge {
+                id: charge_id,
+                invoice_id,
+                payment_method_id,
+                status,
+            };
+            Ok(item)
         }
-    };
-    let message = format!("{:?}", charge);
-    let send = producer
-        .send(
-            FutureRecord::to("INVOICE_CHARGE")
-                .payload(&message)
-                .key(&format!("Key {}", 0)),
-            Duration::from_secs(0),
-        )
-        .await;
-    match send {
-        Ok(_) => Ok(charge),
-        Err(_) => Err(CreatingChargeError::KafkaProducerError),
+        Err(error) => {
+            tracing::error!("{:?}", error);
+            Err(CreatingChargeError::UnmappedError)
+        }
     }
 }
 
@@ -78,17 +63,26 @@ mod test {
     use super::create;
     use crate::{
         config::database::get_connection,
-        core::dto::{
-            charge::ChargeStatus,
-            payment_method::{Method, PaymentMethodInfo, PixInfo},
+        core::{
+            dto::{
+                charge::ChargeStatus,
+                invoice::InvoiceStatus,
+                payment_method::{Method, PaymentMethodInfo, PixInfo},
+            },
+            repository::helpers::{
+                create_gateway, create_invoice, create_payment_method, create_user, delete_charge,
+                delete_gateway, delete_invoice, delete_payment_method, delete_user,
+            },
         },
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_create_charge() {
         let conn = get_connection().await;
+        let gateway_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
         let user_id: Uuid = UUIDv4.fake();
@@ -99,34 +93,26 @@ mod test {
             external_id: String::from("ABCDEFG"),
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id, external_id
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_charge: user setup went wrong");
-        let q_invoice = format!(
-            "INSERT INTO invoice (id, user_id, status) VALUES ('{}', '{}', 'draft');",
-            invoice_id, user_id,
-        );
-        sqlx::query(&q_invoice)
-            .execute(&conn)
+        create_invoice(&conn, invoice_id, user_id, InvoiceStatus::Draft)
             .await
             .expect("should_create_charge: invoice setup went wrong");
-        let q_payment_method = format!(
-                "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}');",
-                payment_method_id,
-                user_id,
-                true,
-                method,
-                serde_json::to_string(&info).unwrap()
-            );
-        sqlx::query(&q_payment_method)
-            .execute(&conn)
+        create_gateway(&conn, gateway_id, &gateway_name)
             .await
-            .expect("should_create_charge: payment_method setup went wrong");
+            .expect("should_create_charge: gateway setup went wrong");
+        create_payment_method(
+            &conn,
+            payment_method_id,
+            user_id,
+            gateway_id,
+            true,
+            method,
+            info,
+        )
+        .await
+        .expect("should_create_charge: payment_method setup went wrong");
 
         let result = create(&conn, invoice_id, payment_method_id).await;
 
@@ -142,8 +128,24 @@ mod test {
                     charge.status.to_string(),
                     ChargeStatus::Progress.to_string()
                 );
+                delete_charge(&conn, charge.id)
+                    .await
+                    .expect("should_create_charge: charge remove went wrong");
             }
             Err(error) => panic!("should_create_charge test went wrong: {:?}", error),
-        }
+        };
+
+        delete_payment_method(&conn, payment_method_id)
+            .await
+            .expect("should_create_charge: gateway remove went wrong");
+        delete_gateway(&conn, gateway_id)
+            .await
+            .expect("should_create_charge: gateway remove went wrong");
+        delete_invoice(&conn, invoice_id)
+            .await
+            .expect("should_create_charge: invoice remove went wrong");
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_create_charge: user remove went wrong");
     }
 }

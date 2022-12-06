@@ -85,7 +85,10 @@ mod test {
     use super::{create, list_by_id};
     use crate::{
         config::database::get_connection,
-        core::usecase::driven::{creating_user::CreatingUserError, reading_user::ReadingUserError},
+        core::{
+            repository::helpers::{create_user, delete_user},
+            usecase::driven::{creating_user::CreatingUserError, reading_user::ReadingUserError},
+        },
     };
     use fake::{uuid::UUIDv4, Fake};
     use uuid::Uuid;
@@ -95,13 +98,7 @@ mod test {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let q_user = format!(
-            "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-            user_id.to_string(),
-            external_id.to_string()
-        );
-        sqlx::query(&q_user)
-            .execute(&conn)
+        create_user(&conn, user_id, external_id)
             .await
             .expect("should_get_user_by_external: user setup went wrong");
 
@@ -115,7 +112,10 @@ mod test {
                 ReadingUserError::UserNotFoundError => panic!("Test did'n found"),
                 ReadingUserError::UnmappedError => panic!("Test went wrong"),
             },
-        }
+        };
+        delete_user(&conn, user_id)
+            .await
+            .expect("should_get_user_by_external: user remove went wrong");
     }
 
     #[actix_rt::test]
@@ -128,7 +128,10 @@ mod test {
         match result {
             Ok(user) => {
                 assert_eq!(user.external_id.to_string(), external_id.to_string());
-                assert_eq!(user.id.to_string().is_empty(), false)
+                assert_eq!(user.id.to_string().is_empty(), false);
+                delete_user(&conn, user.id)
+                    .await
+                    .expect("should_create_user: user remove went wrong");
             }
             Err(error) => match error {
                 CreatingUserError::UnmappedError => panic!("Test went wrong"),
