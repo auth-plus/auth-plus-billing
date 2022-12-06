@@ -4,7 +4,7 @@ mod invoice_create_tests {
         config::database::get_connection,
         core::{
             dto::{invoice::Invoice, invoice_item::InvoiceItem},
-            repository::helpers::{create_user, delete_invoice, delete_user},
+            repository::orm::{create_user, delete_invoice, delete_user},
         },
         presentation::http::routes::invoice::{self, CreateInvoiceInputSchema},
     };

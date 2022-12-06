@@ -3,9 +3,9 @@ use crate::core::{
     dto::payment_method::{Method, PaymentMethodInfo},
 };
 use actix_web::{post, web, HttpResponse, Responder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct CreatePaymentMethodInputSchema {
     pub external_user_id: String,
     pub is_default: bool,
@@ -26,8 +26,8 @@ pub async fn create_payment_method(
         .create(&json.external_user_id, json.is_default, method, &json.info)
         .await
     {
-        Ok(charge) => {
-            let json = web::Json(charge);
+        Ok(pm) => {
+            let json = web::Json(pm);
             HttpResponse::Ok().json(json)
         }
         Err(error) => {

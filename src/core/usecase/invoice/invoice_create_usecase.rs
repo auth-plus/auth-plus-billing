@@ -63,18 +63,19 @@ mod test {
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
-    use fake::{faker::lorem::en::Sentence, Fake, Faker};
+    use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
     use mockall::predicate;
     use rust_decimal::Decimal;
     use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_creating_invoice_by_user() {
-        let user_id = Uuid::new_v4();
-        let external_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
         let user = User {
             id: user_id,
-            external_id: Uuid::new_v4(),
+            external_id,
         };
         let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
@@ -89,7 +90,7 @@ mod test {
         };
         let itens = Vec::from([item]);
         let invoice = Invoice {
-            id: Uuid::new_v4(),
+            id: invoice_id,
             status: InvoiceStatus::from("draft"),
             user_id,
         };
@@ -156,7 +157,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_user_provider_went_wrong() {
-        let external_id = Uuid::new_v4();
+        let external_id: Uuid = UUIDv4.fake();
         let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
@@ -195,11 +196,11 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_invoice_provider_went_wrong() {
-        let user_id = Uuid::new_v4();
-        let external_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
         let user = User {
             id: user_id,
-            external_id: Uuid::new_v4(),
+            external_id,
         };
         let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();

@@ -90,6 +90,7 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let gateway_id: Uuid = UUIDv4.fake();
+        let payment_method_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
         let is_default = true;
         let method = Method::Pix;
@@ -107,7 +108,7 @@ mod test {
             external_id,
         };
         let pm = PaymentMethod {
-            id: Uuid::new_v4(),
+            id: payment_method_id,
             user_id,
             info: info.clone(),
             is_default,
@@ -192,7 +193,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_user_provider_went_wrong() {
-        let external_id = Uuid::new_v4();
+        let external_id: Uuid = UUIDv4.fake();
         let is_default = true;
         let method = Method::Pix;
         let pix_info = PixInfo {
@@ -227,9 +228,9 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_payment_method_provider_went_wrong() {
-        let user_id = Uuid::new_v4();
-        let external_id = Uuid::new_v4();
-        let gateway_id = Uuid::new_v4();
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let gateway_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
         let is_default = true;
         let method = Method::Pix;

@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Serialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Deserialize)]
 pub enum Method {
     Pix,
     CreditCard,
@@ -49,7 +49,7 @@ pub enum PaymentMethodInfo {
     CreditCardInfo(CreditCardInfo),
     PixInfo(PixInfo),
 }
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, Deserialize)]
 pub struct PaymentMethod {
     pub id: Uuid,
     pub user_id: Uuid,
