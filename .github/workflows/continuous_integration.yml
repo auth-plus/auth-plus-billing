@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:11.12
+        image: postgres:15.1
         env:
           POSTGRES_PASSWORD: db_password
           POSTGRES_USER: root
@@ -35,13 +35,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      kafka:
-        image: confluentinc/cp-kafka:7.0.0
-        env:
-          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-        ports:
-          - 9092:9092
     env:
       APP_NAME: auth-plus-billling
       PORT: 3000
@@ -51,7 +44,7 @@ jobs:
       DATABASE_PASSWORD: db_password
       DATABASE_DATABASE: billing
       DATABASE_PORT: 5432
-      KAFKA_HOST: 5432
+      KAFKA_HOST: localhost:9092
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
