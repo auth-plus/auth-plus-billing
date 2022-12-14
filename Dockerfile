@@ -1,4 +1,4 @@
-FROM rust:1.64.0 as dependency
+FROM rust:1.65.0-slim-buster as dependency
 
 # KAFKA dependency need this lib
 RUN apt-get update && apt-get -y install cmake protobuf-compiler

@@ -31,15 +31,7 @@ pub fn get_config() -> Config {
         port: app_port,
     };
     let db_host = env::var("DATABASE_HOST").expect("RUST_ENV is not set");
-    let db_user = env::var("DATABASE_USER").expect("APP_NAME is not set");
-    let db_pw: String = env::var("DATABASE_PASSWORD").expect("PORT is not set");
-    let db_name: String = env::var("DATABASE_DATABASE").expect("PORT is not set");
-    let db_port: String = env::var("DATABASE_PORT").expect("PORT is not set");
-    let url = format!(
-        "postgres://{}:{}@{}:{}/{}",
-        db_user, db_pw, db_host, db_port, db_name
-    );
-    let database = Database { url };
+    let database = Database { url: db_host };
     let kafka = Kafka {
         url: env::var("KAFKA_HOST").expect("KAFKA_HOST is not set"),
     };
