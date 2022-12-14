@@ -40,11 +40,7 @@ jobs:
       APP_NAME: auth-plus-billling
       PORT: 3000
       RUST_ENV: test
-      DATABASE_HOST: localhost
-      DATABASE_USER: root
-      DATABASE_PASSWORD: db_password
-      DATABASE_DATABASE: billing
-      DATABASE_PORT: 5432
+      DATABASE_HOST: postgres://root:db_password@localhost:5432/billing
       KAFKA_HOST: localhost:9092
     steps:
       - uses: actions/checkout@v3
