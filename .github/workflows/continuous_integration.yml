@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
       - uses: actions-rs/audit-check@v1
         with:
@@ -47,8 +48,18 @@ jobs:
       KAFKA_HOST: localhost:9092
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
       - name: Running migrations
         run: HOST=localhost make migration/up
@@ -68,6 +79,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           components: clippy
       - uses: actions-rs/clippy-check@v1
