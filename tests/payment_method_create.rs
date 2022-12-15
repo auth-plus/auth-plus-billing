@@ -5,12 +5,17 @@ mod payment_method_create_tests {
         core::{
             dto::payment_method::{PaymentMethod, PaymentMethodInfo, PixInfo},
             repository::orm::{
-                create_gateway, create_user, delete_gateway, delete_payment_method, delete_user,
+                create_gateway, create_user, delete_gateway, delete_gateway_integration_by_pm,
+                delete_payment_method, delete_user,
             },
         },
         presentation::http::routes::payment_method::{self, CreatePaymentMethodInputSchema},
     };
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{
+        faker::{internet::en::FreeEmail, lorem::en::Word},
+        uuid::UUIDv4,
+        Fake,
+    };
     use uuid::Uuid;
 
     #[actix_web::test]
@@ -20,8 +25,9 @@ mod payment_method_create_tests {
         let user_id: Uuid = UUIDv4.fake();
         let gateway_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
+        let email: String = FreeEmail().fake();
         let pix_info = PixInfo {
-            key: String::from("any@email.com"),
+            key: email,
             external_id: String::from("ABCDEFG"),
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
@@ -49,9 +55,12 @@ mod payment_method_create_tests {
         assert_eq!(resp.status(), StatusCode::OK);
         let body: PaymentMethod = test::read_body_json(resp).await;
 
+        delete_gateway_integration_by_pm(&conn, body.id)
+            .await
+            .expect("should_create_payment_method: gateway_integration remove went wrong");
         delete_payment_method(&conn, body.id)
             .await
-            .expect("should_create_payment_method: gateway remove went wrong");
+            .expect("should_create_payment_method: payment_method remove went wrong");
         delete_gateway(&conn, gateway_id)
             .await
             .expect("should_create_payment_method: gateway remove went wrong");

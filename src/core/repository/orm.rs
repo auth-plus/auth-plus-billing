@@ -77,16 +77,14 @@ pub async fn create_payment_method(
     conn: &Pool<Postgres>,
     payment_method_id: Uuid,
     user_id: Uuid,
-    gateway_id: Uuid,
     is_default: bool,
     method: Method,
     info: PaymentMethodInfo,
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_payment_method = format!(
-        "INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}','{}');",
+        "INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ('{}','{}', '{}','{}','{}');",
         payment_method_id,
         user_id,
-        gateway_id,
         is_default,
         method,
         serde_json::to_string(&info).unwrap()
@@ -128,6 +126,45 @@ pub async fn delete_charge(
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_charge = format!("DELETE FROM charge WHERE id :: text = '{}';", charge_id);
     sqlx::query(&q_charge).execute(conn).await
+}
+
+pub async fn create_gateway_integration(
+    conn: &Pool<Postgres>,
+    charge_id: Uuid,
+    invoice_id: Uuid,
+    payment_method_id: Uuid,
+    status: ChargeStatus,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let q_charge = format!(
+        "INSERT INTO gateway_integration (id, invoice_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}');",
+        charge_id,
+        invoice_id,
+        payment_method_id,
+        status
+    );
+    sqlx::query(&q_charge).execute(conn).await
+}
+
+pub async fn delete_gateway_integration(
+    conn: &Pool<Postgres>,
+    gateway_integration_id: Uuid,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let q_gi = format!(
+        "DELETE FROM gateway_integration WHERE id :: text = '{}';",
+        gateway_integration_id
+    );
+    sqlx::query(&q_gi).execute(conn).await
+}
+
+pub async fn delete_gateway_integration_by_pm(
+    conn: &Pool<Postgres>,
+    payment_method_id: Uuid,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let q_gi = format!(
+        "DELETE FROM gateway_integration WHERE payment_method_id :: text = '{}';",
+        payment_method_id
+    );
+    sqlx::query(&q_gi).execute(conn).await
 }
 
 #[cfg(test)]

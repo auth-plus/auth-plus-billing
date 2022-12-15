@@ -67,7 +67,7 @@ mod test {
             dto::{
                 charge::ChargeStatus,
                 invoice::InvoiceStatus,
-                payment_method::{Method, PaymentMethodInfo, PixInfo},
+                payment_method::{CreditCardInfo, Method, PaymentMethodInfo},
             },
             repository::orm::{
                 create_gateway, create_invoice, create_payment_method, create_user, delete_charge,
@@ -88,11 +88,13 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let method = Method::Pix;
-        let pix_info = PixInfo {
-            key: String::from("any@email.com"),
+        let cc_info = CreditCardInfo {
+            last4digit: String::from("1234"),
+            flag: String::from("visa"),
+            expire_data: String::from("01/01/1970"),
             external_id: String::from("ABCDEFG"),
         };
-        let info = PaymentMethodInfo::PixInfo(pix_info);
+        let info = PaymentMethodInfo::CreditCardInfo(cc_info);
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_charge: user setup went wrong");
@@ -102,17 +104,9 @@ mod test {
         create_gateway(&conn, gateway_id, &gateway_name)
             .await
             .expect("should_create_charge: gateway setup went wrong");
-        create_payment_method(
-            &conn,
-            payment_method_id,
-            user_id,
-            gateway_id,
-            true,
-            method,
-            info,
-        )
-        .await
-        .expect("should_create_charge: payment_method setup went wrong");
+        create_payment_method(&conn, payment_method_id, user_id, true, method, info)
+            .await
+            .expect("should_create_charge: payment_method setup went wrong");
 
         let result = create(&conn, invoice_id, payment_method_id).await;
 

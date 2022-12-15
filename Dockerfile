@@ -1,10 +1,14 @@
-FROM rust:1.65.0-slim-buster as dependency
+FROM rust:1.65.0 as dependency
 
 # KAFKA dependency need this lib
-RUN apt-get update && apt-get -y install cmake protobuf-compiler
-RUN apt-get install libssl-dev
+RUN apt-get update && apt-get -y install cmake protobuf-compiler 
+
+# CARGO UPDATE/AUDIT need thios lib
+RUN apt-get -y install libssl-dev
+
 WORKDIR /app
 COPY . .
+VOLUME /target /target
 RUN cargo build
 
 FROM alpine:3.16.2 as deploy

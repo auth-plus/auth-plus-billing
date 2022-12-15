@@ -3,6 +3,9 @@ use uuid::Uuid;
 use crate::core::{
     dto::payment_method::{Method, PaymentMethod, PaymentMethodInfo},
     usecase::driven::{
+        creating_gateway_integration::{
+            CreatingGatewayIntegration, CreatingGatewayIntegrationError,
+        },
         creating_payment_method::{CreatingPaymentMethod, CreatingPaymentMethodError},
         reading_gateway::{ReadingGateway, ReadingGatewayError},
         reading_user::{ReadingUser, ReadingUserError},
@@ -13,6 +16,7 @@ pub struct PaymentMethodCreateUsecase {
     pub reading_user: Box<dyn ReadingUser>,
     pub reading_gateway: Box<dyn ReadingGateway>,
     pub creating_payment_method: Box<dyn CreatingPaymentMethod>,
+    pub creating_gateway_integration: Box<dyn CreatingGatewayIntegration>,
 }
 
 impl PaymentMethodCreateUsecase {
@@ -52,13 +56,27 @@ impl PaymentMethodCreateUsecase {
         };
         let result_pm = self
             .creating_payment_method
-            .create(user.id, gateway.id, is_default, method, info)
+            .create(user.id, is_default, method, info)
             .await;
-        match result_pm {
-            Ok(pm) => Ok(pm),
+        let pm = match result_pm {
+            Ok(pm) => pm,
             Err(error) => match error {
-                CreatingPaymentMethodError::UnmappedError => Err(String::from(
-                    "CreatingPaymentMethodError::UnmappedError Something wrong happen",
+                CreatingPaymentMethodError::UnmappedError => {
+                    return Err(String::from(
+                        "CreatingPaymentMethodError::UnmappedError Something wrong happen",
+                    ))
+                }
+            },
+        };
+        let result_gi = self
+            .creating_gateway_integration
+            .create(gateway.id, pm.id)
+            .await;
+        match result_gi {
+            Ok(_) => Ok(pm),
+            Err(error) => match error {
+                CreatingGatewayIntegrationError::UnmappedError => Err(String::from(
+                    "CreatingGatewayIntegrationError::UnmappedError Something wrong happen",
                 )),
             },
         }
@@ -72,10 +90,14 @@ mod test {
     use crate::core::{
         dto::{
             gateway::Gateway,
+            gateway_integration::GatewayIntegration,
             payment_method::{Method, PaymentMethod, PaymentMethodInfo, PixInfo},
             user::User,
         },
         usecase::driven::{
+            creating_gateway_integration::{
+                CreatingGatewayIntegrationError, MockCreatingGatewayIntegration,
+            },
             creating_payment_method::{CreatingPaymentMethodError, MockCreatingPaymentMethod},
             reading_gateway::MockReadingGateway,
             reading_user::{MockReadingUser, ReadingUserError},
@@ -91,6 +113,7 @@ mod test {
         let external_id: Uuid = UUIDv4.fake();
         let gateway_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
+        let gateway_integration_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
         let is_default = true;
         let method = Method::Pix;
@@ -114,6 +137,12 @@ mod test {
             is_default,
             method,
         };
+        let gi = GatewayIntegration {
+            id: gateway_integration_id,
+            payment_method_id,
+            gateway_id,
+            gateway_external_id: None,
+        };
         let mut mock_ru = MockReadingUser::new();
         mock_ru
             .expect_list_by_id()
@@ -124,23 +153,29 @@ mod test {
         mock_rg
             .expect_get_priority_list()
             .times(1)
-            .return_const(Ok(Vec::from([gateway])));
+            .return_const(Ok(Vec::from([gateway.clone()])));
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm
             .expect_create()
             .with(
                 predicate::eq(user_id),
-                predicate::eq(gateway_id),
                 predicate::eq(is_default),
                 predicate::eq(method),
                 predicate::eq(info.clone()),
             )
             .times(1)
             .return_const(Ok(pm.clone()));
+        let mut mock_cgi = MockCreatingGatewayIntegration::new();
+        mock_cgi
+            .expect_create()
+            .with(predicate::eq(gateway.id), predicate::eq(pm.id))
+            .times(1)
+            .return_const(Ok(gi.clone()));
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
             reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
+            creating_gateway_integration: Box::new(mock_cgi),
         };
         let result = payment_gateway_usecase
             .create(&external_id.to_string(), is_default, method, &info)
@@ -176,10 +211,13 @@ mod test {
         mock_rg.expect_get_priority_list().times(0);
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm.expect_create().times(0);
+        let mut mock_cgi = MockCreatingGatewayIntegration::new();
+        mock_cgi.expect_create().times(0);
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
             reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
+            creating_gateway_integration: Box::new(mock_cgi),
         };
         let result = payment_gateway_usecase
             .create("any-hash-not-uuid", is_default, method, &info)
@@ -211,10 +249,13 @@ mod test {
         mock_rg.expect_get_priority_list().times(0);
         let mut mock_cpm = MockCreatingPaymentMethod::new();
         mock_cpm.expect_create().times(0);
+        let mut mock_cgi = MockCreatingGatewayIntegration::new();
+        mock_cgi.expect_create().times(0);
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
             reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
+            creating_gateway_integration: Box::new(mock_cgi),
         };
         let result = payment_gateway_usecase
             .create(&external_id.to_string(), is_default, method, &info)
@@ -263,17 +304,19 @@ mod test {
             .expect_create()
             .with(
                 predicate::eq(user_id),
-                predicate::eq(gateway_id),
                 predicate::eq(is_default),
                 predicate::eq(method),
                 predicate::eq(info.clone()),
             )
             .times(1)
             .return_const(Err(CreatingPaymentMethodError::UnmappedError));
+        let mut mock_cgi = MockCreatingGatewayIntegration::new();
+        mock_cgi.expect_create().times(0);
         let payment_gateway_usecase = PaymentMethodCreateUsecase {
             reading_user: Box::new(mock_ru),
             reading_gateway: Box::new(mock_rg),
             creating_payment_method: Box::new(mock_cpm),
+            creating_gateway_integration: Box::new(mock_cgi),
         };
         let result = payment_gateway_usecase
             .create(&external_id.to_string(), is_default, method, &info)
@@ -284,6 +327,86 @@ mod test {
             Err(error) => assert_eq!(
                 error,
                 String::from("CreatingPaymentMethodError::UnmappedError Something wrong happen")
+            ),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_gateway_integration_provider_went_wrong() {
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let gateway_id: Uuid = UUIDv4.fake();
+        let payment_method_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
+        let is_default = true;
+        let method = Method::Pix;
+        let pix_info = PixInfo {
+            key: String::from("any@email.com"),
+            external_id: String::from("ABCDEFG"),
+        };
+        let info = PaymentMethodInfo::PixInfo(pix_info);
+        let gateway = Gateway {
+            id: gateway_id,
+            name: gateway_name,
+        };
+        let user = User {
+            id: user_id,
+            external_id,
+        };
+        let pm = PaymentMethod {
+            id: payment_method_id,
+            user_id,
+            info: info.clone(),
+            is_default,
+            method,
+        };
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru
+            .expect_list_by_id()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Ok(user.clone()));
+        let mut mock_rg = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .times(1)
+            .return_const(Ok(Vec::from([gateway.clone()])));
+        let mut mock_cpm = MockCreatingPaymentMethod::new();
+        mock_cpm
+            .expect_create()
+            .with(
+                predicate::eq(user_id),
+                predicate::eq(is_default),
+                predicate::eq(method),
+                predicate::eq(info.clone()),
+            )
+            .times(1)
+            .return_const(Ok(pm.clone()));
+        let mut mock_cgi = MockCreatingGatewayIntegration::new();
+        mock_cgi
+            .expect_create()
+            .with(predicate::eq(gateway.id), predicate::eq(pm.id))
+            .times(1)
+            .return_const(Err(CreatingGatewayIntegrationError::UnmappedError));
+        let payment_gateway_usecase = PaymentMethodCreateUsecase {
+            reading_user: Box::new(mock_ru),
+            reading_gateway: Box::new(mock_rg),
+            creating_payment_method: Box::new(mock_cpm),
+            creating_gateway_integration: Box::new(mock_cgi),
+        };
+        let result = payment_gateway_usecase
+            .create(&external_id.to_string(), is_default, method, &info)
+            .await;
+
+        match result {
+            Ok(_) => {
+                panic!("should_fail_when_gateway_integration_provider_went_wrong test went wrong")
+            }
+            Err(error) => assert_eq!(
+                error,
+                String::from(
+                    "CreatingGatewayIntegrationError::UnmappedError Something wrong happen"
+                )
             ),
         }
     }

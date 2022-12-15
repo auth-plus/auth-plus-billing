@@ -7,7 +7,6 @@ pub trait CreatingPaymentMethod {
     async fn create(
         &self,
         user_id: Uuid,
-        gateway_id: Uuid,
         is_default: bool,
         method: Method,
         info: &PaymentMethodInfo,
