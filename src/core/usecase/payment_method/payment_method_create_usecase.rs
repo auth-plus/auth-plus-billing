@@ -29,7 +29,7 @@ impl PaymentMethodCreateUsecase {
     ) -> Result<PaymentMethod, String> {
         let external_user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => return Err(String::from("external id provided isn't uuid")),
         };
         let result_user = self.reading_user.list_by_id(&external_user_id).await;
         let user = match result_user {

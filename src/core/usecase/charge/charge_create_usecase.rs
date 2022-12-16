@@ -19,7 +19,7 @@ impl ChargeCreateUsecase {
     pub async fn create_charge(&self, invoice_id_str: &str) -> Result<Charge, String> {
         let invoice_id = match Uuid::parse_str(invoice_id_str) {
             Ok(id) => id,
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => return Err(String::from("external id provided isn't uuid")),
         };
         let result_invoice = self.reading_invoice.get_by_id(invoice_id).await;
         let invoice = match result_invoice {

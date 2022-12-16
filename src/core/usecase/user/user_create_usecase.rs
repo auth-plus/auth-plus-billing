@@ -13,7 +13,7 @@ impl UserCreateUsecase {
     pub async fn create_user(&self, external_user_id_str: &str) -> Result<User, String> {
         let external_user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => return Err(String::from("external id provided isn't uuid")),
         };
         let result_user = self.creating_user.create(&external_user_id).await;
         match result_user {

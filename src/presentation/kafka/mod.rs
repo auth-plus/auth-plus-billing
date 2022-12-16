@@ -9,9 +9,8 @@ pub async fn start() -> std::io::Result<()> {
     loop {
         for msg in consumer.iter() {
             let msg = msg.unwrap();
-            let key: &str = msg.key_view().unwrap().unwrap();
-            let value = msg.payload().unwrap();
-            println!("key: {:?}\nvalue: {:?}", key, value)
+            let _key: &str = msg.key_view().unwrap().unwrap();
+            let _value = msg.payload().unwrap();
         }
     }
 }

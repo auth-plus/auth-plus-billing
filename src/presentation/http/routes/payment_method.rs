@@ -19,7 +19,6 @@ pub async fn create_payment_method(
 ) -> impl Responder {
     let core_x = core::get_core().await;
     let method = Method::from(json.method.as_str());
-    println!("{:?}", json.info);
     match core_x
         .payment_method
         .create

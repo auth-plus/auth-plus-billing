@@ -34,8 +34,7 @@ async fn create(
             Ok(item)
         }
         Err(err) => {
-            dbg!(err);
-            // tracing::error!("GatewayIntegration.create :{:?}", err);
+            tracing::error!("GatewayIntegration.create :{:?}", err);
             Err(CreatingGatewayIntegrationError::UnmappedError)
         }
     }

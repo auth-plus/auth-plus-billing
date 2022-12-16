@@ -19,7 +19,7 @@ impl InvoiceUpdateUsecase {
     ) -> Result<Invoice, String> {
         let invoice_id = match Uuid::parse_str(invoice_id_str) {
             Ok(id) => id,
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => return Err(String::from("external id provided isn't uuid")),
         };
         let invoice_result = self.reading_invoice.get_by_id(invoice_id).await;
         let invoice = match invoice_result {
@@ -281,11 +281,6 @@ mod test {
         ]);
 
         for idx in 0..old_list.len() {
-            // let mut list: Vec<bool> = Vec::new();
-            // for new in new_list {
-            //     let r = InvoiceUpdateUsecase::validate_update_status_change(old, new);
-            //     list.push(r)
-            // }
             let old = old_list[idx];
             let list: Vec<bool> = new_list
                 .clone()
