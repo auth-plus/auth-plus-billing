@@ -56,14 +56,13 @@ async fn get_default_by_user_id(
 async fn create(
     conn: &PgPool,
     user_id: Uuid,
-    gateway_id: Uuid,
     is_default: bool,
     method: Method,
     info: &PaymentMethodInfo,
 ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
     let payment_method_id = Uuid::new_v4();
     let inser_info = Json(info);
-    let result = sqlx::query("INSERT INTO payment_method (id, user_id, gateway_id, is_default, method, info) VALUES ($1,$2,$3,$4,$5,$6)").bind(payment_method_id).bind(user_id).bind(gateway_id).bind(is_default).bind(method.to_string()).bind(inser_info).execute(conn).await;
+    let result = sqlx::query("INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ($1,$2,$3,$4,$5)").bind(payment_method_id).bind(user_id).bind(is_default).bind(method.to_string()).bind(inser_info).execute(conn).await;
     match result {
         Ok(_) => {
             let pm = PaymentMethod {
@@ -97,12 +96,11 @@ impl CreatingPaymentMethod for PaymentMethodRepository {
     async fn create(
         &self,
         user_id: Uuid,
-        gateway_id: Uuid,
         is_default: bool,
         method: Method,
         info: &PaymentMethodInfo,
     ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
-        create(&self.conn, user_id, gateway_id, is_default, method, info).await
+        create(&self.conn, user_id, is_default, method, info).await
     }
 }
 
@@ -149,17 +147,9 @@ mod test {
         create_gateway(&conn, gateway_id, &gateway_name)
             .await
             .expect("should_get_default_payment_method: gateway setup went wrong");
-        create_payment_method(
-            &conn,
-            payment_method_id,
-            user_id,
-            gateway_id,
-            true,
-            method,
-            info,
-        )
-        .await
-        .expect("should_get_default_payment_method: payment_method setup went wrong");
+        create_payment_method(&conn, payment_method_id, user_id, true, method, info)
+            .await
+            .expect("should_get_default_payment_method: payment_method setup went wrong");
 
         let result = get_default_by_user_id(&conn, &user_id).await;
 
@@ -190,8 +180,6 @@ mod test {
     async fn should_create_payment_method() {
         let conn = get_connection().await;
         let user_id: Uuid = UUIDv4.fake();
-        let gateway_id: Uuid = UUIDv4.fake();
-        let gateway_name: String = Word().fake();
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -202,11 +190,8 @@ mod test {
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_payment_method: user setup went wrong");
-        create_gateway(&conn, gateway_id, &gateway_name)
-            .await
-            .expect("should_create_payment_method: gateway setup went wrong");
 
-        let result = create(&conn, user_id, gateway_id, true, method, &info).await;
+        let result = create(&conn, user_id, true, method, &info).await;
 
         match result {
             Ok(pm) => {
@@ -221,9 +206,6 @@ mod test {
             Err(error) => panic!("should_create_payment_method test went wrong: {:?}", error),
         };
 
-        delete_gateway(&conn, gateway_id)
-            .await
-            .expect("should_create_payment_method: gateway remove went wrong");
         delete_user(&conn, user_id)
             .await
             .expect("should_create_payment_method: user remove went wrong");

@@ -5,7 +5,7 @@ pub trait ReadingGateway {
     async fn get_priority_list(&self) -> Result<Vec<Gateway>, ReadingGatewayError>;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum ReadingGatewayError {
     UnmappedError,
 }

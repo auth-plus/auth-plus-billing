@@ -11,17 +11,6 @@ pub enum ChargeStatus {
     UnmappedStatus,
 }
 
-impl From<&str> for ChargeStatus {
-    fn from(item: &str) -> Self {
-        match item {
-            "failed" => ChargeStatus::Failed,
-            "progress" => ChargeStatus::Progress,
-            "succeed" => ChargeStatus::Succeed,
-            _ => ChargeStatus::UnmappedStatus,
-        }
-    }
-}
-
 impl fmt::Display for ChargeStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

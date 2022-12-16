@@ -42,17 +42,9 @@ mod charge_create_tests {
         create_gateway(&conn, gateway_id, &gateway_name)
             .await
             .expect("should_create_charge: gateway setup went wrong");
-        create_payment_method(
-            &conn,
-            payment_method_id,
-            user_id,
-            gateway_id,
-            true,
-            Method::Pix,
-            info,
-        )
-        .await
-        .expect("should_create_charge: payment_method setup went wrong");
+        create_payment_method(&conn, payment_method_id, user_id, true, Method::Pix, info)
+            .await
+            .expect("should_create_charge: payment_method setup went wrong");
 
         let payload = CreateChargeInputSchema {
             invoice_id: invoice_id.to_string(),

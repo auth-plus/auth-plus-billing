@@ -19,7 +19,7 @@ impl InvoiceUpdateUsecase {
     ) -> Result<Invoice, String> {
         let invoice_id = match Uuid::parse_str(invoice_id_str) {
             Ok(id) => id,
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => return Err(String::from("external id provided isn't uuid")),
         };
         let invoice_result = self.reading_invoice.get_by_id(invoice_id).await;
         let invoice = match invoice_result {
@@ -55,6 +55,9 @@ impl InvoiceUpdateUsecase {
             InvoiceStatus::Draft => new == InvoiceStatus::Pending,
             InvoiceStatus::Pending => {
                 new == InvoiceStatus::Paid || new == InvoiceStatus::ChargedWithError
+            }
+            InvoiceStatus::ChargedWithError => {
+                new == InvoiceStatus::Paid || new == InvoiceStatus::Uncollectible
             }
             InvoiceStatus::Paid => {
                 new == InvoiceStatus::Cancelled
@@ -216,6 +219,76 @@ mod test {
                 error,
                 String::from("UpdatingInvoiceError::UnmappedError went wrong")
             ),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_succeed_when_validating_status_update() {
+        let old_list = Vec::from([
+            InvoiceStatus::Draft,
+            InvoiceStatus::Pending,
+            InvoiceStatus::ChargedWithError,
+            InvoiceStatus::Paid,
+            InvoiceStatus::Cancelled,
+            InvoiceStatus::Uncollectible,
+            InvoiceStatus::Refunded,
+            InvoiceStatus::InProtest,
+            InvoiceStatus::Chargeback,
+            InvoiceStatus::UnmappedStatus,
+        ]);
+        let new_list = old_list.clone();
+        let result_expect = Vec::from([
+            // Draft
+            [
+                false, true, false, false, false, false, false, false, false, false,
+            ],
+            // Pending
+            [
+                false, false, true, true, false, false, false, false, false, false,
+            ],
+            // ChargedWithError
+            [
+                false, false, false, true, false, true, false, false, false, false,
+            ],
+            // Paid
+            [
+                false, false, false, false, true, false, true, true, false, false,
+            ],
+            // Cancelled
+            [
+                false, false, false, false, false, false, false, false, false, false,
+            ],
+            // Uncollectible
+            [
+                false, false, false, false, false, false, false, false, false, false,
+            ],
+            // Refunded
+            [
+                false, false, false, false, false, false, false, false, false, false,
+            ],
+            // InProtest
+            [
+                false, false, false, false, false, false, false, false, true, false,
+            ],
+            // Chargeback
+            [
+                false, false, false, false, false, false, false, false, false, false,
+            ],
+            // UnmappedStatus
+            [
+                false, false, false, false, false, false, false, false, false, false,
+            ],
+        ]);
+
+        for idx in 0..old_list.len() {
+            let old = old_list[idx];
+            let list: Vec<bool> = new_list
+                .clone()
+                .into_iter()
+                .map(|new| InvoiceUpdateUsecase::validate_update_status_change(old, new))
+                .collect();
+
+            assert_eq!(list, result_expect[idx]);
         }
     }
 }
