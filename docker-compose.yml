@@ -14,11 +14,11 @@ services:
       - .:/app
     restart: always
     networks:
-      - host
+      - billing-net
     depends_on:
-      - database-billing
+      - database
 
-  database-billing:
+  database:
     container_name: postgres
     image: postgres:15.1
     restart: always
@@ -31,10 +31,10 @@ services:
     volumes:
       - v-database:/var/lib/postgres
     networks:
-      - host
+      - billing-net
 
 networks:
-  host:
+  billing-net:
     driver: bridge
 
 volumes:

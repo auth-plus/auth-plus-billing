@@ -1,6 +1,6 @@
 .PHONY: infra/up
 infra/up:
-	docker-compose up -d api database-billing
+	docker-compose up -d api database
 	HOST=localhost make migration/up
 
 .PHONY: infra/down
