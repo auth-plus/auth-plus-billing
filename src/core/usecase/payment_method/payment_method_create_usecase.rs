@@ -99,7 +99,7 @@ mod test {
                 CreatingGatewayIntegrationError, MockCreatingGatewayIntegration,
             },
             creating_payment_method::{CreatingPaymentMethodError, MockCreatingPaymentMethod},
-            reading_gateway::MockReadingGateway,
+            reading_gateway::{MockReadingGateway, ReadingGatewayError},
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
@@ -264,6 +264,57 @@ mod test {
         match result {
             Ok(_) => panic!("should_fail_when_user_provider_went_wrong test went wrong"),
             Err(error) => assert_eq!(error, String::from("User Not found")),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_gateway_provider_went_wrong() {
+        let user_id: Uuid = UUIDv4.fake();
+        let external_id: Uuid = UUIDv4.fake();
+        let gateway_id: Uuid = UUIDv4.fake();
+        let gateway_name: String = Word().fake();
+        let is_default = true;
+        let method = Method::Pix;
+        let pix_info = PixInfo {
+            key: String::from("any@email.com"),
+            external_id: String::from("ABCDEFG"),
+        };
+        let info = PaymentMethodInfo::PixInfo(pix_info);
+        let user = User {
+            id: user_id,
+            external_id,
+        };
+        let mut mock_ru = MockReadingUser::new();
+        mock_ru
+            .expect_list_by_id()
+            .with(predicate::eq(external_id))
+            .times(1)
+            .return_const(Ok(user.clone()));
+        let mut mock_rg = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .times(1)
+            .return_const(Err(ReadingGatewayError::UnmappedError));
+        let mut mock_cpm = MockCreatingPaymentMethod::new();
+        mock_cpm.expect_create().times(0);
+        let mut mock_cgi = MockCreatingGatewayIntegration::new();
+        mock_cgi.expect_create().times(0);
+        let payment_gateway_usecase = PaymentMethodCreateUsecase {
+            reading_user: Box::new(mock_ru),
+            reading_gateway: Box::new(mock_rg),
+            creating_payment_method: Box::new(mock_cpm),
+            creating_gateway_integration: Box::new(mock_cgi),
+        };
+        let result = payment_gateway_usecase
+            .create(&external_id.to_string(), is_default, method, &info)
+            .await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_gateway_provider_went_wrong test went wrong"),
+            Err(error) => assert_eq!(
+                error,
+                String::from("ReadingGatewayError::UnmappedError Something wrong happen")
+            ),
         }
     }
 

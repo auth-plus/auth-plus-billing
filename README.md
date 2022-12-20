@@ -27,9 +27,11 @@ cargo clippy # run lint (don't work on make dev)
 cargo fmt # run lint (don't work on make dev)
 ```
 
-## Document
+## Documentation
 
-Some guides of business model
+### Model Entity Relation
+
+![diagram made by DBeaver](/doc/MER.png "Database Diagram")
 
 ### Machine state of invoice
 
