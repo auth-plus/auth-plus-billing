@@ -7,9 +7,10 @@ RUN apt-get -y install libssl-dev
 COPY . .
 RUN cargo build --release
 
-FROM rust:1.65.0 as deploy
+FROM ubuntu:22.04 as deploy
 WORKDIR /app
 COPY --from=dependency /app/target/release/http /app
-RUN chmod +x http
+RUN chown -R root /app/http
 EXPOSE 5002
+USER root
 CMD [ "http" ]
