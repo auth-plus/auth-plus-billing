@@ -10,7 +10,5 @@ RUN cargo build --release
 FROM ubuntu:22.04 as deploy
 WORKDIR /app
 COPY --from=dependency /app/target/release/http /app
-RUN chown -R root /app/http
 EXPOSE 5002
-USER root
-CMD [ "http" ]
+CMD [ "./http" ]
