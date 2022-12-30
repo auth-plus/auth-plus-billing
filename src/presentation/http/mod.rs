@@ -1,8 +1,9 @@
+pub mod middlewares;
 pub mod routes;
+
 use crate::config;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use routes::{charge, invoice, payment_method, user};
-
 async fn get_health_status() -> impl Responder {
     HttpResponse::Ok()
         .content_type("application/json")
