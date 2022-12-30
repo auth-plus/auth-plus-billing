@@ -1,19 +1,23 @@
 use std::env;
 
+#[derive(Clone)]
 pub struct App {
     pub env: String,
     pub name: String,
     pub port: u16,
 }
 
+#[derive(Clone)]
 pub struct Database {
     pub url: String,
 }
 
+#[derive(Clone)]
 pub struct Kafka {
     pub url: String,
 }
 
+#[derive(Clone)]
 pub struct Config {
     pub app: App,
     pub database: Database,
