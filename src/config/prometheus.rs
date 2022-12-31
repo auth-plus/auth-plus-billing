@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use prometheus::{register_int_counter, Encoder, IntCounter, Registry, TextEncoder};
+use prometheus::{Encoder, IntCounter, Registry, TextEncoder};
 
 pub struct Prometheus {}
 
@@ -28,12 +28,13 @@ impl Prometheus {
             String::from_utf8(buffer.clone()).expect("Failed to convert bytes to string");
         buffer.clear();
 
-        let mut buffer = vec![];
-        if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
+        let mut buffer2 = vec![];
+        if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer2) {
             eprintln!("could not encode prometheus metrics: {}", e);
         };
         let response_default =
-            String::from_utf8(buffer.clone()).expect("Failed to convert bytes to string");
+            String::from_utf8(buffer2.clone()).expect("Failed to convert bytes to string");
+        buffer2.clear();
         response.push_str(&response_default);
         response
     }
