@@ -3,15 +3,11 @@ pub mod routes;
 use crate::config::{
     self,
     prometheus::{Prometheus, C_HTTP_FAIL, C_HTTP_SUCCESS},
-    zipkin::get_tracer,
 };
 use actix_service::Service;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use opentelemetry::{
-    trace::{FutureExt, TraceContextExt, Tracer},
-    Key,
-};
 use routes::{charge, invoice, payment_method, user};
+use tracing_actix_web::TracingLogger;
 
 async fn get_health_status() -> impl Responder {
     HttpResponse::Ok()
@@ -29,22 +25,9 @@ async fn get_metrics() -> impl Responder {
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
     let config = config::env_var::get_config();
-    HttpServer::new(move || {
+    HttpServer::new(|| {
         App::new()
-            // .wrap_fn(move |req, srv| {
-            //     let tr = get_tracer();
-            //     let config = config::env_var::get_config();
-            //     let attributes_list = Vec::from([
-            //         Key::new("environment").string(config.app.env),
-            //         Key::new("HTTP_URL").string(req.path().to_string()),
-            //         Key::new("HTTP_METHOD").string(req.method().to_string()),
-            //     ]);
-            //     tr.in_span("middleware", move |cx| {
-            //         cx.span().set_attributes(attributes_list.into_iter());
-            //         cx.span().add_event("HTTP_STARTED", vec![]);
-            //         srv.call(req).with_context(cx)
-            //     })
-            // })
+            .wrap(TracingLogger::default())
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
                 async {
