@@ -1,9 +1,7 @@
 FROM rust:1.65.0 as dependency
 WORKDIR /app
-# KAFKA dependency need this lib
-RUN apt-get update && apt-get -y install cmake protobuf-compiler 
-# CARGO UPDATE/AUDIT need thios lib
-RUN apt-get -y install libssl-dev
+# dependencies need this lib
+RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-config
 COPY . .
 RUN cargo build --release
 

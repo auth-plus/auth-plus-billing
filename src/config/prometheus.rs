@@ -1,19 +1,40 @@
-use prometheus::{
-    core::{AtomicF64, GenericCounter},
-    Counter, Opts, Registry,
-};
+use lazy_static::lazy_static;
+use prometheus::{register_int_counter, Encoder, IntCounter, Registry, TextEncoder};
 
-pub fn get_metrics() -> (GenericCounter<AtomicF64>, GenericCounter<AtomicF64>) {
-    let success_opts = Opts::new("success_counter", "counter 20X");
-    let failed_opts = Opts::new("success_counter", "counter 20X");
-    let success_counter = Counter::with_opts(success_opts).unwrap();
-    let failed_counter = Counter::with_opts(failed_opts).unwrap();
-    return (success_counter, failed_counter);
+pub struct Prometheus {}
+
+lazy_static! {
+    static ref REGISTRY: Registry =
+        Registry::new_custom(Some(String::from("auth_plus_billing")), None).unwrap();
+    pub static ref C_HTTP_SUCCESS: IntCounter =
+        IntCounter::new("success_counter", "counter 20X").unwrap();
+    pub static ref C_HTTP_FAIL: IntCounter =
+        IntCounter::new("failed_counter", "counter 50X").unwrap();
 }
 
-pub fn init_metrics() {
-    let (success_counter, failed_counter) = get_metrics();
-    let r = Registry::new();
-    r.register(Box::new(success_counter.clone())).unwrap();
-    r.register(Box::new(failed_counter.clone())).unwrap();
+impl Prometheus {
+    pub fn init() {
+        REGISTRY.register(Box::new(C_HTTP_SUCCESS.clone())).unwrap();
+        REGISTRY.register(Box::new(C_HTTP_FAIL.clone())).unwrap();
+    }
+
+    pub fn export() -> String {
+        let encoder = TextEncoder::new();
+        let mut buffer = vec![];
+        if let Err(e) = encoder.encode(&REGISTRY.gather(), &mut buffer) {
+            eprintln!("could not encode prometheus metrics: {}", e);
+        };
+        let mut response =
+            String::from_utf8(buffer.clone()).expect("Failed to convert bytes to string");
+        buffer.clear();
+
+        let mut buffer = vec![];
+        if let Err(e) = encoder.encode(&prometheus::gather(), &mut buffer) {
+            eprintln!("could not encode prometheus metrics: {}", e);
+        };
+        let response_default =
+            String::from_utf8(buffer.clone()).expect("Failed to convert bytes to string");
+        response.push_str(&response_default);
+        response
+    }
 }
