@@ -1,7 +1,13 @@
 pub mod routes;
-use crate::config;
+
+use crate::config::{
+    self,
+    prometheus::{Prometheus, C_HTTP_FAIL, C_HTTP_SUCCESS},
+};
+use actix_service::Service;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use routes::{charge, invoice, payment_method, user};
+use tracing_actix_web::TracingLogger;
 
 async fn get_health_status() -> impl Responder {
     HttpResponse::Ok()
@@ -9,12 +15,33 @@ async fn get_health_status() -> impl Responder {
         .body("Ok")
 }
 
+async fn get_metrics() -> impl Responder {
+    let result = Prometheus::export();
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(result)
+}
+
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
     let config = config::env_var::get_config();
     HttpServer::new(|| {
         App::new()
+            .wrap(TracingLogger::default())
+            .wrap_fn(|req, srv| {
+                let fut = srv.call(req);
+                async {
+                    let res = fut.await?;
+                    if res.status().is_success() {
+                        C_HTTP_SUCCESS.inc();
+                    } else {
+                        C_HTTP_FAIL.inc()
+                    }
+                    Ok(res)
+                }
+            })
             .route("/health", web::get().to(get_health_status))
+            .route("/metrics", web::get().to(get_metrics))
             .service(charge::create_charge)
             .service(invoice::get_invoice)
             .service(invoice::create_invoice)

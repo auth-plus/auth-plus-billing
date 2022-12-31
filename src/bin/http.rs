@@ -1,6 +1,10 @@
-use auth_plus_billing::presentation;
+use auth_plus_billing::{
+    config::{prometheus::Prometheus, zipkin::configure_tracing},
+    presentation,
+};
 
 fn main() -> std::io::Result<()> {
-    tracing_subscriber::fmt::init();
+    Prometheus::init();
+    configure_tracing("info".to_owned());
     presentation::http::start()
 }
