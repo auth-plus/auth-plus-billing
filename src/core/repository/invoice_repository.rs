@@ -49,7 +49,7 @@ async fn list_by_user_id(
 async fn create(
     conn: &PgPool,
     user_id: &Uuid,
-    itens: &Vec<InvoiceItem>,
+    itens: &[InvoiceItem],
 ) -> Result<Invoice, CreatingInvoiceError> {
     let invoice_id = Uuid::new_v4();
     let q_invoice = format!(
@@ -158,7 +158,7 @@ impl CreatingInvoice for InvoiceRepository {
     async fn create(
         &self,
         user_id: &Uuid,
-        itens: &Vec<InvoiceItem>,
+        itens: &[InvoiceItem],
     ) -> Result<Invoice, CreatingInvoiceError> {
         create(&self.conn, user_id, itens).await
     }

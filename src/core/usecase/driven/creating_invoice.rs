@@ -7,7 +7,7 @@ pub trait CreatingInvoice {
     async fn create(
         &self,
         user_id: &Uuid,
-        itens: &Vec<InvoiceItem>,
+        itens: &[InvoiceItem],
     ) -> Result<Invoice, CreatingInvoiceError>;
 }
 

@@ -15,7 +15,7 @@ impl InvoiceCreateUsecase {
     pub async fn create_invoice(
         &self,
         external_user_id: &str,
-        itens: &Vec<InvoiceItem>,
+        itens: &[InvoiceItem],
     ) -> Result<Invoice, String> {
         let user_id = match Uuid::parse_str(external_user_id) {
             Ok(id) => id,
