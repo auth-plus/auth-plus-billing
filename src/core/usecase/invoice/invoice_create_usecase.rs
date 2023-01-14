@@ -101,7 +101,7 @@ mod test {
             .times(1)
             .return_const(Ok(user.clone()));
         let mut mock_ci = MockCreatingInvoice::new();
-        // fix predicate::always() to use predicate::eq(itens)
+        // TODO: fix predicate::always() to use predicate::eq(itens)
         mock_ci
             .expect_create()
             .with(predicate::eq(user_id), predicate::always())
@@ -222,7 +222,7 @@ mod test {
             .times(1)
             .return_const(Ok(user.clone()));
         let mut mock_ci = MockCreatingInvoice::new();
-        // fix predicate::always() to use predicate::eq(itens)
+        // TODO: fix predicate::always() to use predicate::eq(itens)
         mock_ci
             .expect_create()
             .with(predicate::eq(user_id), predicate::always())
