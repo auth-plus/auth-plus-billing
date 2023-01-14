@@ -16,7 +16,7 @@ A billing system should be able to
 - Docker
 - Docker Compose
 
-### Commands
+### Commands (Docker)
 
 ```bash
 make dev # create database and run migrations and attach a bash on container
@@ -25,6 +25,13 @@ cargo run --bin kafka # download all dependencies and start kafka consumer serve
 cargo test # run integration and unit tests (only works on make dev)
 cargo clippy # run lint (don't work on make dev)
 cargo fmt # run lint (don't work on make dev)
+```
+
+### Commands (nix)
+
+```bash
+nix build
+nix develop # enter dev shell
 ```
 
 ## Documentation

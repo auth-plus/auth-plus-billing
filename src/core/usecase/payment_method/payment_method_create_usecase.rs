@@ -271,8 +271,6 @@ mod test {
     async fn should_fail_when_gateway_provider_went_wrong() {
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let gateway_id: Uuid = UUIDv4.fake();
-        let gateway_name: String = Word().fake();
         let is_default = true;
         let method = Method::Pix;
         let pix_info = PixInfo {
