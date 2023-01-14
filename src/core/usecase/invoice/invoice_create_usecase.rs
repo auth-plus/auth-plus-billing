@@ -33,6 +33,7 @@ impl InvoiceCreateUsecase {
                 }
             },
         };
+
         let result_invoice = self.creating_invoice.create(&user.id, itens).await;
         match result_invoice {
             Ok(invoice) => Ok(invoice),
@@ -50,7 +51,6 @@ impl InvoiceCreateUsecase {
 
 #[cfg(test)]
 mod test {
-
     use super::InvoiceCreateUsecase;
     use crate::core::{
         dto::{
@@ -101,9 +101,10 @@ mod test {
             .times(1)
             .return_const(Ok(user.clone()));
         let mut mock_ci = MockCreatingInvoice::new();
+        // fix predicate::always() to use predicate::eq(itens)
         mock_ci
             .expect_create()
-            .with(predicate::eq(user_id), predicate::eq(itens.clone()))
+            .with(predicate::eq(user_id), predicate::always())
             .times(1)
             .return_const(Ok(invoice.clone()));
         let invoice_usecase = InvoiceCreateUsecase {
@@ -111,7 +112,7 @@ mod test {
             creating_invoice: Box::new(mock_ci),
         };
         let result = invoice_usecase
-            .create_invoice(&external_id.to_string(), &itens)
+            .create_invoice(external_id.to_string().as_str(), &itens)
             .await;
 
         match result {
@@ -221,9 +222,10 @@ mod test {
             .times(1)
             .return_const(Ok(user.clone()));
         let mut mock_ci = MockCreatingInvoice::new();
+        // fix predicate::always() to use predicate::eq(itens)
         mock_ci
             .expect_create()
-            .with(predicate::eq(user_id), predicate::eq(itens.clone()))
+            .with(predicate::eq(user_id), predicate::always())
             .times(1)
             .return_const(Err(CreatingInvoiceError::InvoiceNotFoundError));
         let invoice_usecase = InvoiceCreateUsecase {

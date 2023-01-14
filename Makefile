@@ -1,22 +1,22 @@
 .PHONY: infra/up
 infra/up:
-	docker-compose up -d api database
+	docker compose up -d api database
 	HOST=localhost make migration/up
 
 .PHONY: infra/down
 infra/down:
-	docker-compose down
+	docker compose down
 
 .PHONY: dev
 dev:
 	make infra/up
-	docker-compose exec api sh
+	docker compose exec api sh
 
 .PHONY: test
 test:
 	make infra/up
-	docker-compose exec -T api cargo build
-	docker-compose exec -T api cargo test
+	docker compose exec -T api cargo build
+	docker compose exec -T api cargo test
 	make clean/docker
 
 .PHONY: clean/docker
