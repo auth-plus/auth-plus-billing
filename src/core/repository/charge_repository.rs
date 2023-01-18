@@ -12,13 +12,15 @@ async fn create(
     conn: &PgPool,
     invoice_id: Uuid,
     payment_method_id: Uuid,
+    external_id: String,
 ) -> Result<Charge, CreatingChargeError> {
     let charge_id = Uuid::new_v4();
     let status = ChargeStatus::Progress;
     let q_charge = format!(
-        "INSERT INTO charge (id, invoice_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}');",
+        "INSERT INTO charge (id, invoice_id, external_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}', '{}');",
         charge_id,
         invoice_id,
+        external_id,
         payment_method_id,
         status
     );
@@ -47,7 +49,8 @@ impl CreatingCharge for ChargeRepository {
         invoice_id: Uuid,
         payment_method_id: Uuid,
     ) -> Result<Charge, CreatingChargeError> {
-        create(&self.conn, invoice_id, payment_method_id).await
+        let external_id = String::from("GET THIS FROM GATEWAY");
+        create(&self.conn, invoice_id, payment_method_id, external_id).await
     }
 }
 
@@ -81,6 +84,7 @@ mod test {
     #[actix_rt::test]
     async fn should_create_charge() {
         let conn = get_connection().await;
+        let external_id: String = Word().fake();
         let gateway_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
         let invoice_id: Uuid = UUIDv4.fake();
@@ -108,7 +112,7 @@ mod test {
             .await
             .expect("should_create_charge: payment_method setup went wrong");
 
-        let result = create(&conn, invoice_id, payment_method_id).await;
+        let result = create(&conn, invoice_id, payment_method_id, external_id).await;
 
         match result {
             Ok(charge) => {
