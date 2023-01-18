@@ -38,7 +38,7 @@ nix develop # enter dev shell
 
 ### Model Entity Relation
 
-![diagram made by DBeaver](/doc/MER.png "Database Diagram")
+![diagram made by DBeaver](/db/MER.png "Database Diagram")
 
 ### Machine state of invoice
 
