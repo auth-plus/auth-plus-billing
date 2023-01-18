@@ -84,7 +84,7 @@ mod test {
     #[actix_rt::test]
     async fn should_create_charge() {
         let conn = get_connection().await;
-        let external_id: String = Word().fake();
+        let invoice_external_id: String = Word().fake();
         let gateway_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
         let invoice_id: Uuid = UUIDv4.fake();
@@ -112,7 +112,7 @@ mod test {
             .await
             .expect("should_create_charge: payment_method setup went wrong");
 
-        let result = create(&conn, invoice_id, payment_method_id, external_id).await;
+        let result = create(&conn, invoice_id, payment_method_id, invoice_external_id).await;
 
         match result {
             Ok(charge) => {
