@@ -89,6 +89,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_succeed_creating_charge() {
+        let now = chrono::offset::Utc::now().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
@@ -102,6 +103,7 @@ mod test {
             id: invoice_id,
             user_id,
             status: InvoiceStatus::Draft,
+            created_at: now,
         };
         let payment_method = PaymentMethod {
             id: payment_method_id,
@@ -209,12 +211,14 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_payment_method_provider_went_wrong() {
+        let now = chrono::offset::Utc::now().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let invoice = Invoice {
             id: invoice_id,
             user_id,
             status: InvoiceStatus::Draft,
+            created_at: now,
         };
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
@@ -250,6 +254,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_charge_provider_went_wrong() {
+        let now = chrono::offset::Utc::now().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
@@ -262,6 +267,7 @@ mod test {
             id: invoice_id,
             user_id,
             status: InvoiceStatus::Draft,
+            created_at: now,
         };
         let payment_method = PaymentMethod {
             id: payment_method_id,

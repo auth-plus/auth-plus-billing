@@ -124,6 +124,7 @@ mod test {
         let gateway = Gateway {
             id: gateway_id,
             name: gateway_name,
+            priority: 1,
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
         let user = User {
@@ -332,6 +333,7 @@ mod test {
         let gateway = Gateway {
             id: gateway_id,
             name: gateway_name,
+            priority: 1,
         };
         let user = User {
             id: user_id,
@@ -397,6 +399,7 @@ mod test {
         let gateway = Gateway {
             id: gateway_id,
             name: gateway_name,
+            priority: 1,
         };
         let user = User {
             id: user_id,

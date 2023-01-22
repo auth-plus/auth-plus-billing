@@ -39,7 +39,7 @@ mod charge_create_tests {
         create_invoice(&conn, invoice_id, user_id, InvoiceStatus::Draft)
             .await
             .expect("should_create_charge: invoice setup went wrong");
-        create_gateway(&conn, gateway_id, &gateway_name)
+        create_gateway(&conn, gateway_id, &gateway_name, 1)
             .await
             .expect("should_create_charge: gateway setup went wrong");
         create_payment_method(&conn, payment_method_id, user_id, true, Method::Pix, info)

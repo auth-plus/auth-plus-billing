@@ -5,4 +5,5 @@ use uuid::Uuid;
 pub struct Gateway {
     pub id: Uuid,
     pub name: String,
+    pub priority: i32,
 }
