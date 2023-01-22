@@ -37,7 +37,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sqlx = { version = "0.6", features = [ "runtime-tokio-rustls" , "postgres", "uuid", "json","decimal", "chrono" ] }
 sqlx-core = "0.6"
-tokio = { version = "1.23", features = ["full"] }
+tokio = { version = "1.23.1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 uuid = { version = "1.2", features=['v4', 'serde']}
