@@ -92,7 +92,7 @@ mod test {
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_payment_integration: user setup went wrong");
-        create_gateway(&conn, gateway_id, &gateway_name)
+        create_gateway(&conn, gateway_id, &gateway_name, 1)
             .await
             .expect("should_create_payment_integration: gateway setup went wrong");
         create_payment_method(&conn, payment_method_id, user_id, true, method, info)

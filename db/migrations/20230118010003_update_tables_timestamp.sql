@@ -1,28 +1,28 @@
 -- migrate:up
 
 ALTER TABLE "user"
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 ALTER TABLE invoice
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 ALTER TABLE invoice_item
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 ALTER TABLE payment_method
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 ALTER TABLE charge
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 ALTER TABLE charge
 ADD COLUMN "external_id" text not null;
 
 ALTER TABLE gateway
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 ALTER TABLE gateway_integration
-ADD COLUMN "created_at" timestamp not null default timezone('utc', now());
+ADD COLUMN "created_at" timestamptz not null default timezone('utc', now());
 
 -- migrate:down
 

@@ -144,7 +144,7 @@ mod test {
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_get_default_payment_method: user setup went wrong");
-        create_gateway(&conn, gateway_id, &gateway_name)
+        create_gateway(&conn, gateway_id, &gateway_name, 1)
             .await
             .expect("should_get_default_payment_method: gateway setup went wrong");
         create_payment_method(&conn, payment_method_id, user_id, true, method, info)

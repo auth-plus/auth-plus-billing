@@ -12,10 +12,11 @@ pub struct GatewayRepository {
 struct GatewayDAO {
     id: Uuid,
     name: String,
+    priority: i32,
 }
 
 async fn get_priority_list(conn: &PgPool) -> Result<Vec<Gateway>, ReadingGatewayError> {
-    let result = sqlx::query_as::<_, GatewayDAO>("SELECT * FROM gateway")
+    let result = sqlx::query_as::<_, GatewayDAO>("SELECT * FROM gateway ORDER BY priority ASC")
         .fetch_all(conn)
         .await;
     match result {
@@ -25,6 +26,7 @@ async fn get_priority_list(conn: &PgPool) -> Result<Vec<Gateway>, ReadingGateway
                 .map(|x| Gateway {
                     id: x.id,
                     name: x.name,
+                    priority: x.priority,
                 })
                 .collect();
             Ok(mapped_list)
@@ -65,7 +67,7 @@ mod test {
         let conn = get_connection().await;
         let gateway_id: Uuid = UUIDv4.fake();
         let gateway_name: String = Word().fake();
-        create_gateway(&conn, gateway_id, &gateway_name)
+        create_gateway(&conn, gateway_id, &gateway_name, 1)
             .await
             .expect("get_priority_list: gateway setup went wrong");
 
@@ -73,8 +75,8 @@ mod test {
 
         match result {
             Ok(list) => {
-                assert_eq!(list[0].id.to_string(), gateway_id.to_string());
-                assert_eq!(list[0].name, gateway_name);
+                assert_eq!(list[1].id.to_string(), gateway_id.to_string());
+                assert_eq!(list[1].name, gateway_name);
             }
             Err(error) => panic!("should_get_priority_list test went wrong: {:?}", error),
         };

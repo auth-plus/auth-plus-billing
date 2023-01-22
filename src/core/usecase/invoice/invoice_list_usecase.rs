@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::core::{
@@ -11,8 +12,18 @@ pub struct InvoiceListUsecase {
     pub reading_invoice: Box<dyn ReadingInvoice>,
 }
 
+#[derive(Deserialize, PartialEq, Debug, Clone)]
+pub struct InvoiceFilterSchema {
+    pub date_init: Option<String>,
+    pub date_end: Option<String>,
+}
+
 impl InvoiceListUsecase {
-    pub async fn get_by_user_id(&self, external_user_id_str: &str) -> Result<Vec<Invoice>, String> {
+    pub async fn get_by_user_id(
+        &self,
+        external_user_id_str: &str,
+        filter: &InvoiceFilterSchema,
+    ) -> Result<Vec<Invoice>, String> {
         let user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
             Err(_) => return Err(String::from("external id provided isn't uuid")),
@@ -29,7 +40,7 @@ impl InvoiceListUsecase {
                 }
             },
         };
-        let result_invoice = self.reading_invoice.list_by_user_id(user.id).await;
+        let result_invoice = self.reading_invoice.list_by_user_id(user.id, filter).await;
         match result_invoice {
             Ok(invoices) => Ok(invoices),
             Err(error) => match error {
@@ -45,7 +56,7 @@ impl InvoiceListUsecase {
 #[cfg(test)]
 mod test {
 
-    use super::InvoiceListUsecase;
+    use super::{InvoiceFilterSchema, InvoiceListUsecase};
     use crate::core::{
         dto::{
             invoice::{Invoice, InvoiceStatus},
@@ -65,10 +76,16 @@ mod test {
         let id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let user = User { id, external_id };
+        let now = chrono::offset::Utc::now().to_string();
+        let filter = InvoiceFilterSchema {
+            date_init: None,
+            date_end: None,
+        };
         let invoices = vec![Invoice {
             id: Uuid::new_v4(),
             status: InvoiceStatus::Pending,
             user_id: id,
+            created_at: now,
         }];
         let mut mock_ru = MockReadingUser::new();
         mock_ru
@@ -79,7 +96,7 @@ mod test {
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
             .expect_list_by_user_id()
-            .with(predicate::eq(user.id))
+            .with(predicate::eq(user.id), predicate::eq(filter.clone()))
             .times(1)
             .return_const(Ok(invoices.clone()));
         let invoice_usecase = InvoiceListUsecase {
@@ -87,7 +104,7 @@ mod test {
             reading_invoice: Box::new(mock_ri),
         };
         let result = invoice_usecase
-            .get_by_user_id(&external_id.to_string())
+            .get_by_user_id(&external_id.to_string(), &filter)
             .await;
 
         match result {
@@ -103,6 +120,10 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_uuid_is_wrong() {
+        let filter = InvoiceFilterSchema {
+            date_init: None,
+            date_end: None,
+        };
         let mut mock_ru = MockReadingUser::new();
         mock_ru.expect_list_by_id().times(0);
         let mut mock_ri = MockReadingInvoice::new();
@@ -112,7 +133,7 @@ mod test {
             reading_invoice: Box::new(mock_ri),
         };
         let result = invoice_usecase
-            .get_by_user_id("any-hash-that-is-not-uuid")
+            .get_by_user_id("any-hash-that-is-not-uuid", &filter)
             .await;
 
         match result {
@@ -126,6 +147,10 @@ mod test {
     #[actix_rt::test]
     async fn should_fail_when_user_provider_went_wrong() {
         let external_id: Uuid = UUIDv4.fake();
+        let filter = InvoiceFilterSchema {
+            date_init: None,
+            date_end: None,
+        };
         let mut mock_ru = MockReadingUser::new();
         mock_ru
             .expect_list_by_id()
@@ -139,7 +164,7 @@ mod test {
             reading_invoice: Box::new(mock_ri),
         };
         let result = invoice_usecase
-            .get_by_user_id(&external_id.to_string())
+            .get_by_user_id(&external_id.to_string(), &filter)
             .await;
 
         match result {
@@ -155,6 +180,10 @@ mod test {
         let id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let user = User { id, external_id };
+        let filter = InvoiceFilterSchema {
+            date_init: None,
+            date_end: None,
+        };
         let mut mock_ru = MockReadingUser::new();
         mock_ru
             .expect_list_by_id()
@@ -164,7 +193,7 @@ mod test {
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
             .expect_list_by_user_id()
-            .with(predicate::eq(user.id))
+            .with(predicate::eq(user.id), predicate::eq(filter.clone()))
             .times(1)
             .return_const(Err(ReadingInvoiceError::InvoiceNotFoundError));
         let invoice_usecase = InvoiceListUsecase {
@@ -172,7 +201,7 @@ mod test {
             reading_invoice: Box::new(mock_ri),
         };
         let result = invoice_usecase
-            .get_by_user_id(&external_id.to_string())
+            .get_by_user_id(&external_id.to_string(), &filter)
             .await;
 
         match result {

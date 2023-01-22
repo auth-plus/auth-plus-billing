@@ -35,7 +35,7 @@ mod payment_method_create_tests {
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_payment_method: user setup went wrong");
-        create_gateway(&conn, gateway_id, &gateway_name)
+        create_gateway(&conn, gateway_id, &gateway_name, 1)
             .await
             .expect("should_create_payment_method: gateway setup went wrong");
 

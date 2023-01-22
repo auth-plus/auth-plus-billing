@@ -1,4 +1,7 @@
-use crate::core::{self, dto::invoice_item::InvoiceItem};
+use crate::core::{
+    self, dto::invoice_item::InvoiceItem,
+    usecase::invoice::invoice_list_usecase::InvoiceFilterSchema,
+};
 use actix_web::{get, patch, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 
@@ -29,14 +32,23 @@ pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl R
 }
 
 #[derive(Serialize)]
-struct GetInvoiceOutputSchema {
+pub struct GetInvoiceOutputSchema {
     invoces: Vec<core::dto::invoice::Invoice>,
 }
 
 #[get("/invoice/{user_id}")]
-pub async fn get_invoice(external_user_id: web::Path<String>) -> impl Responder {
+pub async fn get_invoice(
+    external_user_id: web::Path<String>,
+    filter: web::Query<InvoiceFilterSchema>,
+) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x.invoice.list.get_by_user_id(&external_user_id).await {
+    println!("{:?}", filter);
+    match core_x
+        .invoice
+        .list
+        .get_by_user_id(&external_user_id, &filter)
+        .await
+    {
         Ok(invoces) => {
             let resp = GetInvoiceOutputSchema { invoces };
             let json = web::Json(resp);
@@ -70,6 +82,7 @@ pub async fn update_invoice(json: web::Json<UpdateInvoiceInputSchema>) -> impl R
         }
         Err(error) => {
             let resp = format!("Something wrong happen: {}", error);
+            println!("{:?}", resp);
             HttpResponse::InternalServerError().body(resp)
         }
     }

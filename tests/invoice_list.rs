@@ -6,7 +6,7 @@ mod invoice_list_tests {
             dto::invoice::InvoiceStatus,
             repository::orm::{create_invoice, create_user, delete_invoice, delete_user},
         },
-        presentation::http::routes::invoice,
+        presentation::http::routes::invoice::{self},
     };
     use fake::{uuid::UUIDv4, Fake};
     use uuid::Uuid;
@@ -28,6 +28,8 @@ mod invoice_list_tests {
             .uri(&format!("/invoice/{}", external_id.to_string()))
             .to_request();
         let resp = test::call_service(&app, req).await;
+        // let result = test::read_body(resp).await;
+        // println!("{:?}", result[0]);
         assert_eq!(resp.status(), StatusCode::OK);
         delete_invoice(&conn, invoice_id)
             .await

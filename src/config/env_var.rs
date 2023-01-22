@@ -34,8 +34,8 @@ pub fn get_config() -> Config {
         name: app_name,
         port: app_port,
     };
-    let db_host = env::var("DATABASE_HOST").expect("RUST_ENV is not set");
-    let database = Database { url: db_host };
+    let db_url = env::var("DATABASE_URL").expect("RUST_ENV is not set");
+    let database = Database { url: db_url };
     let kafka = Kafka {
         url: env::var("KAFKA_HOST").expect("KAFKA_HOST is not set"),
     };

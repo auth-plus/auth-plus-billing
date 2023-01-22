@@ -57,10 +57,11 @@ pub async fn create_gateway(
     conn: &Pool<Postgres>,
     gateway_id: Uuid,
     gateway_name: &str,
+    priority: i32,
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_gateway = format!(
-        "INSERT INTO gateway (id, name) VALUES ('{}', '{}');",
-        gateway_id, gateway_name
+        "INSERT INTO gateway (id, name, priority) VALUES ('{}', '{}', '{}');",
+        gateway_id, gateway_name, priority
     );
     sqlx::query(&q_gateway).execute(conn).await
 }

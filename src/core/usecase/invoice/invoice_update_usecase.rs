@@ -31,7 +31,7 @@ impl InvoiceUpdateUsecase {
                 ReadingInvoiceError::UnmappedError => {
                     return Err(String::from(
                         "ReadingInvoiceError::UnmappedError went wrong",
-                    ))
+                    ));
                 }
             },
         };
@@ -93,11 +93,13 @@ mod test {
             id: invoice_id,
             user_id,
             status: InvoiceStatus::Draft,
+            created_at: chrono::offset::Utc::now().to_string(),
         };
         let updated_invoice = Invoice {
             id: invoice_id,
             user_id,
             status: InvoiceStatus::Pending,
+            created_at: chrono::offset::Utc::now().to_string(),
         };
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
@@ -181,12 +183,14 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_invoice_updating_provider_went_wrong() {
+        let now = chrono::offset::Utc::now().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let invoice = Invoice {
             id: invoice_id,
             user_id,
             status: InvoiceStatus::Draft,
+            created_at: now,
         };
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
