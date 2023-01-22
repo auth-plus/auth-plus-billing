@@ -18,7 +18,7 @@ pub fn get_consumer(topics: &[&str]) -> LoggingConsumer {
         .create_with_context(context)
         .expect("Consumer creation failed");
     consumer
-        .subscribe(&topics.to_vec())
+        .subscribe(topics)
         .expect("Can't subscribe to specified topics");
     consumer
 }
