@@ -1,3 +1,4 @@
+pub mod case;
 use rdkafka::message::Message;
 
 use crate::config::kafka::get_consumer;
@@ -27,6 +28,10 @@ pub async fn start() -> std::io::Result<()> {
                 };
                 println!("key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                       m.key(), payload, m.topic(), m.partition(), m.offset(), m.timestamp());
+                match case::switch_case(m.topic(), payload).await {
+                    Ok(result) => println!("{:?}", result),
+                    Err(error) => println!("{:?}", error),
+                }
             }
         };
     }
