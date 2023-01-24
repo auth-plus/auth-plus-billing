@@ -4,6 +4,7 @@ use crate::config::{
     self,
     prometheus::{Prometheus, C_HTTP_FAIL, C_HTTP_SUCCESS},
 };
+use actix_cors::Cors;
 use actix_service::Service;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use routes::{charge, invoice, payment_method, user};
@@ -25,8 +26,10 @@ async fn get_metrics() -> impl Responder {
 #[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
     let config = config::env_var::get_config();
+
     HttpServer::new(|| {
         App::new()
+            .wrap(Cors::permissive())
             .wrap(TracingLogger::default())
             .wrap_fn(|req, srv| {
                 let fut = srv.call(req);
