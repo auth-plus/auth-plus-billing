@@ -67,11 +67,16 @@ There's no precise answer to this, but could be: a cost for each transaction, te
 
 ### Development
 
-- Add [Prometheus](https://github.com/tikv/rust-prometheus)
 - Add [GraphQL](https://github.com/graphql-rust/juniper)
 - Add [Mutating Test](https://github.com/llogiq/mutagen)
+- Add load testing with [k6](https://k6.io/docs/)
 
 ### Business
 
 - Add preferable system for payment gateway as Vindi, Iugu, PagSeguro, or Paypal
 - Add a webhook for each payment-gateway
+
+### Security
+
+- Add [grype](https://github.com/anchore/grype) for security scan (SAST)
+- Add [OWASP ZAP](https://owasp.org/www-project-zap/) to scan vulnerabilities (DAST)
