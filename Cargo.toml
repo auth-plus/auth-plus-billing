@@ -19,12 +19,18 @@ name = "kafka"
 test = false
 bench = false
 
+[[bin]]
+name = "cronjob"
+test = false
+bench = false
+
 [dependencies]
 actix-cors = "0.6.4"
 actix-service = "2.0.0"
 actix-web = "4.2"
 async-trait = "0.1"
 chrono = "0.4.23"
+cron = "0.12.0"
 futures-util = "0.3.25"
 lazy_static = "1.4.0"
 mockall = "0.11"

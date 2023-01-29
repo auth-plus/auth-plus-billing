@@ -60,10 +60,10 @@ mod charge_create_tests {
 
         delete_charge(&conn, body.id)
             .await
-            .expect("should_create_charge: gateway remove went wrong");
+            .expect("should_create_charge: charge remove went wrong");
         delete_payment_method(&conn, payment_method_id)
             .await
-            .expect("should_create_charge: gateway remove went wrong");
+            .expect("should_create_charge: payment_method remove went wrong");
         delete_gateway(&conn, gateway_id)
             .await
             .expect("should_create_charge: gateway remove went wrong");

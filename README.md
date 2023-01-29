@@ -22,6 +22,7 @@ A billing system should be able to
 make dev # create database and run migrations and attach a bash on container
 cargo run # download all dependencies and start http server (only works on make dev)
 cargo run --bin kafka # download all dependencies and start kafka consumer server (only works on make dev)
+cargo run --bin cronjob # download all dependencies and start cronjob (only works on make dev)
 cargo test # run integration and unit tests (only works on make dev)
 cargo clippy # run lint (don't work on make dev)
 cargo fmt # run lint (don't work on make dev)
