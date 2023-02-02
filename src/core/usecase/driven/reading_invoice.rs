@@ -12,6 +12,7 @@ pub trait ReadingInvoice {
         filter: &InvoiceFilterSchema,
     ) -> Result<Vec<Invoice>, ReadingInvoiceError>;
     async fn get_by_id(&self, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError>;
+    async fn get_charged_with_error(&self) -> Result<Vec<Invoice>, ReadingInvoiceError>;
 }
 
 #[derive(Debug, Clone, Copy)]

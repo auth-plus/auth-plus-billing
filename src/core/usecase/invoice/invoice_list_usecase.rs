@@ -51,6 +51,18 @@ impl InvoiceListUsecase {
             },
         }
     }
+    pub async fn get_all_invoices_to_charge(&self) -> Result<Vec<Invoice>, String> {
+        let result_invoice = self.reading_invoice.get_charged_with_error().await;
+        match result_invoice {
+            Ok(list) => Ok(list),
+            Err(error) => match error {
+                ReadingInvoiceError::InvoiceNotFoundError => Err(String::from("Invoice Not found")),
+                ReadingInvoiceError::UnmappedError => Err(String::from(
+                    "ReadingInvoiceError::UnmappedError Something wrong happen",
+                )),
+            },
+        }
+    }
 }
 
 #[cfg(test)]

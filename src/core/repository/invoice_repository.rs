@@ -145,6 +145,34 @@ async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingIn
     }
 }
 
+async fn get_charged_with_error(conn: &PgPool) -> Result<Vec<Invoice>, ReadingInvoiceError> {
+    let q_invoice = format!(
+        "SELECT invoice WHERE status = '{}'",
+        InvoiceStatus::ChargedWithError
+    );
+    let result = sqlx::query_as::<_, InvoiceDAO>(&q_invoice)
+        .fetch_all(conn)
+        .await;
+    match result {
+        Ok(list) => {
+            let mapped_list = list
+                .into_iter()
+                .map(|x| Invoice {
+                    id: x.id.unwrap(),
+                    user_id: x.user_id,
+                    status: InvoiceStatus::from(x.status.as_str()),
+                    created_at: x.created_at.to_string(),
+                })
+                .collect();
+            Ok(mapped_list)
+        }
+        Err(err) => {
+            tracing::error!("InvoiceRepository.get_by_id :{:?}", err);
+            Err(ReadingInvoiceError::UnmappedError)
+        }
+    }
+}
+
 async fn update(
     conn: &PgPool,
     invoice_id: Uuid,
@@ -186,6 +214,9 @@ impl ReadingInvoice for InvoiceRepository {
     }
     async fn get_by_id(&self, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError> {
         get_by_id(&self.conn, invoice_id).await
+    }
+    async fn get_charged_with_error(&self) -> Result<Vec<Invoice>, ReadingInvoiceError> {
+        get_charged_with_error(&self.conn).await
     }
 }
 

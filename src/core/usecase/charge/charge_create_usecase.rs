@@ -1,11 +1,12 @@
 use uuid::Uuid;
 
 use crate::core::{
-    dto::charge::Charge,
+    dto::{charge::Charge, invoice::InvoiceStatus},
     usecase::driven::{
         creating_charge::{CreatingCharge, CreatingChargeError},
         reading_invoice::{ReadingInvoice, ReadingInvoiceError},
         reading_payment_method::{ReadingPaymentMethod, ReadingPaymentMethodError},
+        updating_invoice::{UpdatingInvoice, UpdatingInvoiceError},
     },
 };
 
@@ -13,6 +14,7 @@ pub struct ChargeCreateUsecase {
     pub reading_invoice: Box<dyn ReadingInvoice>,
     pub reading_payment_method: Box<dyn ReadingPaymentMethod>,
     pub creating_charge: Box<dyn CreatingCharge>,
+    pub updating_invoice: Box<dyn UpdatingInvoice>,
 }
 
 impl ChargeCreateUsecase {
@@ -35,6 +37,13 @@ impl ChargeCreateUsecase {
                 }
             },
         };
+        if invoice.status != InvoiceStatus::Draft
+            && invoice.status != InvoiceStatus::ChargedWithError
+        {
+            return Err(String::from(
+                "Invoice can only be charged if status is Draft",
+            ));
+        }
         let result_payment_method = self
             .reading_payment_method
             .get_default_by_user_id(&invoice.user_id)
@@ -53,14 +62,28 @@ impl ChargeCreateUsecase {
             .creating_charge
             .create_charge(invoice.id, payment_method.id)
             .await;
-        match result_charge {
-            Ok(charge) => Ok(charge),
+        let charge = match result_charge {
+            Ok(charge) => charge,
             Err(error) => match error {
                 CreatingChargeError::KafkaProducerError => {
-                    Err(String::from("Error on producing on kafka"))
+                    return Err(String::from("Error on producing on kafka"))
                 }
-                CreatingChargeError::UnmappedError => Err(String::from(
-                    "CreatingChargeError::UnmappedError Something wrong happen",
+                CreatingChargeError::UnmappedError => {
+                    return Err(String::from(
+                        "CreatingChargeError::UnmappedError Something wrong happen",
+                    ))
+                }
+            },
+        };
+        match self
+            .updating_invoice
+            .update(invoice_id, InvoiceStatus::Pending)
+            .await
+        {
+            Ok(_) => Ok(charge),
+            Err(error) => match error {
+                UpdatingInvoiceError::UnmappedError => Err(String::from(
+                    "UpdatingInvoiceError::UnmappedError Something wrong happen",
                 )),
             },
         }
@@ -81,6 +104,7 @@ mod test {
             creating_charge::{CreatingChargeError, MockCreatingCharge},
             reading_invoice::{MockReadingInvoice, ReadingInvoiceError},
             reading_payment_method::{MockReadingPaymentMethod, ReadingPaymentMethodError},
+            updating_invoice::{MockUpdatingInvoice, UpdatingInvoiceError},
         },
     };
     use fake::{uuid::UUIDv4, Fake};
@@ -136,10 +160,20 @@ mod test {
             .with(predicate::eq(invoice_id), predicate::eq(payment_method.id))
             .times(1)
             .return_const(Ok(charge.clone()));
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui
+            .expect_update()
+            .with(
+                predicate::eq(invoice_id),
+                predicate::eq(InvoiceStatus::Pending),
+            )
+            .times(1)
+            .return_const(Ok(invoice.clone()));
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
+            updating_invoice: Box::new(mock_ui),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -162,10 +196,13 @@ mod test {
         mock_rpm.expect_get_default_by_user_id().times(0);
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc.expect_create_charge().times(0);
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui.expect_update().times(0);
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
+            updating_invoice: Box::new(mock_ui),
         };
         let result = charge_usecase.create_charge("any-hash-not-uuid").await;
 
@@ -191,10 +228,13 @@ mod test {
         mock_rpm.expect_get_default_by_user_id().times(0);
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc.expect_create_charge().times(0);
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui.expect_update().times(0);
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
+            updating_invoice: Box::new(mock_ui),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -234,10 +274,13 @@ mod test {
             .return_const(Err(ReadingPaymentMethodError::UnmappedError));
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc.expect_create_charge().times(0);
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui.expect_update().times(0);
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
+            updating_invoice: Box::new(mock_ui),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -294,10 +337,13 @@ mod test {
             .with(predicate::eq(invoice_id), predicate::eq(payment_method.id))
             .times(1)
             .return_const(Err(CreatingChargeError::UnmappedError));
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui.expect_update().times(0);
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
+            updating_invoice: Box::new(mock_ui),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -307,6 +353,83 @@ mod test {
                 assert_eq!(
                     error,
                     String::from("CreatingChargeError::UnmappedError Something wrong happen")
+                );
+            }
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_fail_when_invoice_updating_provider_went_wrong() {
+        let now = chrono::offset::Utc::now().to_string();
+        let user_id: Uuid = UUIDv4.fake();
+        let invoice_id: Uuid = UUIDv4.fake();
+        let payment_method_id: Uuid = UUIDv4.fake();
+        let charge_id: Uuid = UUIDv4.fake();
+        let pix_info = PixInfo {
+            key: String::from("any@email.com"),
+            external_id: String::from("ABCDEFG"),
+        };
+        let info = PaymentMethodInfo::PixInfo(pix_info);
+        let invoice = Invoice {
+            id: invoice_id,
+            user_id,
+            status: InvoiceStatus::Draft,
+            created_at: now,
+        };
+        let payment_method = PaymentMethod {
+            id: payment_method_id,
+            user_id,
+            is_default: true,
+            method: Method::Pix,
+            info,
+        };
+        let charge = Charge {
+            id: charge_id,
+            invoice_id,
+            payment_method_id: payment_method.id,
+            status: ChargeStatus::Progress,
+        };
+        let mut mock_ri = MockReadingInvoice::new();
+        mock_ri
+            .expect_get_by_id()
+            .with(predicate::eq(invoice_id))
+            .times(1)
+            .return_const(Ok(invoice.clone()));
+        let mut mock_rpm = MockReadingPaymentMethod::new();
+        mock_rpm
+            .expect_get_default_by_user_id()
+            .with(predicate::eq(user_id))
+            .times(1)
+            .return_const(Ok(payment_method.clone()));
+        let mut mock_cc = MockCreatingCharge::new();
+        mock_cc
+            .expect_create_charge()
+            .with(predicate::eq(invoice_id), predicate::eq(payment_method.id))
+            .times(1)
+            .return_const(Ok(charge.clone()));
+        let mut mock_ui = MockUpdatingInvoice::new();
+        mock_ui
+            .expect_update()
+            .with(
+                predicate::eq(invoice_id),
+                predicate::eq(InvoiceStatus::Pending),
+            )
+            .return_const(Err(UpdatingInvoiceError::UnmappedError))
+            .times(1);
+        let charge_usecase = ChargeCreateUsecase {
+            reading_invoice: Box::new(mock_ri),
+            reading_payment_method: Box::new(mock_rpm),
+            creating_charge: Box::new(mock_cc),
+            updating_invoice: Box::new(mock_ui),
+        };
+        let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
+
+        match result {
+            Ok(_) => panic!("should_fail_when_charge_provider_went_wrong test went wrong"),
+            Err(error) => {
+                assert_eq!(
+                    error,
+                    String::from("UpdatingInvoiceError::UnmappedError Something wrong happen")
                 );
             }
         }
