@@ -5,6 +5,7 @@ RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-
 COPY . .
 RUN cargo build --release
 RUN cargo build --release --bin  kafka
+RUN cargo build --release --bin  cronjob
 
 FROM ubuntu:22.04 as deploy
 WORKDIR /app
