@@ -2,9 +2,9 @@ use crate::core::dto::gateway_integration::GatewayIntegration;
 use crate::core::usecase::driven::creating_gateway_integration::{
     CreatingGatewayIntegration, CreatingGatewayIntegrationError,
 };
+use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
-
 #[derive(Clone)]
 pub struct GatewayIntegrationRepository {
     conn: PgPool,
@@ -34,7 +34,7 @@ async fn create(
             Ok(item)
         }
         Err(err) => {
-            tracing::error!("GatewayIntegration.create :{:?}", err);
+            error!("GatewayIntegration.create :{:?}", err);
             Err(CreatingGatewayIntegrationError::UnmappedError)
         }
     }

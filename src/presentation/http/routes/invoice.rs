@@ -42,7 +42,6 @@ pub async fn get_invoice(
     filter: web::Query<InvoiceFilterSchema>,
 ) -> impl Responder {
     let core_x = core::get_core().await;
-    println!("{:?}", filter);
     match core_x
         .invoice
         .list
@@ -82,7 +81,6 @@ pub async fn update_invoice(json: web::Json<UpdateInvoiceInputSchema>) -> impl R
         }
         Err(error) => {
             let resp = format!("Something wrong happen: {}", error);
-            println!("{:?}", resp);
             HttpResponse::InternalServerError().body(resp)
         }
     }

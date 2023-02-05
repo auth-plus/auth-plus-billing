@@ -1,10 +1,11 @@
 use crate::{core, presentation::http::routes::user::CreateUserInputSchema};
+use log::error;
 
 pub async fn switch_case(topic: &str, data: &str) -> Result<(), String> {
     let core_x = core::get_core().await;
     match topic {
         "2FA_EMAIL_CREATED" | "2FA_PHONE_CREATED" | "2FA_EMAIL_SENT" | "2FA_PHONE_SENT" => {
-            println!("Sorry I don't intend to charge this action yet");
+            error!("Sorry I don't intend to charge this action yet");
             Ok(())
         }
         "USER_CREATED" => {
@@ -19,7 +20,7 @@ pub async fn switch_case(topic: &str, data: &str) -> Result<(), String> {
             }
         }
         "ORGANIZATION_CREATED" => {
-            println!("Sorry I don't intend to charge this action yet");
+            error!("Sorry I don't intend to charge this action yet");
             Ok(())
         }
         _ => Err(String::from("UnmappedError")),

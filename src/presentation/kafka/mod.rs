@@ -2,6 +2,7 @@ pub mod case;
 use rdkafka::message::Message;
 
 use crate::config::kafka::get_consumer;
+use log::{error, info};
 
 #[tokio::main]
 pub async fn start() -> std::io::Result<()> {
@@ -16,21 +17,21 @@ pub async fn start() -> std::io::Result<()> {
     let consumer = get_consumer(topics);
     loop {
         match consumer.recv().await {
-            Err(e) => println!("Kafka error: {}", e),
+            Err(e) => error!("Kafka error: {}", e),
             Ok(m) => {
                 let payload = match m.payload_view::<str>() {
                     None => "",
                     Some(Ok(s)) => s,
                     Some(Err(e)) => {
-                        println!("Error while deserializing message payload: {:?}", e);
+                        error!("Error while deserializing message payload: {:?}", e);
                         ""
                     }
                 };
-                println!("key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+                info!("key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                       m.key(), payload, m.topic(), m.partition(), m.offset(), m.timestamp());
                 match case::switch_case(m.topic(), payload).await {
-                    Ok(result) => println!("{:?}", result),
-                    Err(error) => println!("{:?}", error),
+                    Ok(result) => info!("{:?}", result),
+                    Err(error) => error!("{:?}", error),
                 }
             }
         };

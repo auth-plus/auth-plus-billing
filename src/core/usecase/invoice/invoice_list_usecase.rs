@@ -51,8 +51,9 @@ impl InvoiceListUsecase {
             },
         }
     }
+
     pub async fn get_all_invoices_to_charge(&self) -> Result<Vec<Invoice>, String> {
-        let result_invoice = self.reading_invoice.get_charged_with_error().await;
+        let result_invoice = self.reading_invoice.list_all_should_be_charged().await;
         match result_invoice {
             Ok(list) => Ok(list),
             Err(error) => match error {
