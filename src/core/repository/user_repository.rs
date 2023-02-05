@@ -1,6 +1,7 @@
 use crate::core::dto::user::User;
 use crate::core::usecase::driven::creating_user::{CreatingUser, CreatingUserError};
 use crate::core::usecase::driven::reading_user::{ReadingUser, ReadingUserError};
+use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -33,7 +34,7 @@ async fn list_by_id(conn: &PgPool, external_id: &Uuid) -> Result<User, ReadingUs
         Err(err) => match err {
             sqlx::Error::RowNotFound => Err(ReadingUserError::UserNotFoundError),
             error => {
-                tracing::error!("UserRepository.list_by_id :{:?}", error);
+                error!("UserRepository.list_by_id :{:?}", error);
                 Err(ReadingUserError::UnmappedError)
             }
         },
@@ -56,7 +57,7 @@ async fn create(conn: &PgPool, external_id: &Uuid) -> Result<User, CreatingUserE
             Ok(u)
         }
         Err(error) => {
-            tracing::error!("UserRepository.create :{:?}", error);
+            error!("UserRepository.create :{:?}", error);
             Err(CreatingUserError::UnmappedError)
         }
     }

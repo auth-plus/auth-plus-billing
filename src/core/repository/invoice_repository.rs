@@ -5,14 +5,15 @@ use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoi
 use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingInvoiceError};
 use crate::core::usecase::invoice::invoice_list_usecase::InvoiceFilterSchema;
 use chrono::{self, Utc};
+use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
-struct InvoiceDAO {
+pub struct InvoiceDAO {
     id: Option<Uuid>,
-    user_id: Uuid,
-    status: String,
+    pub user_id: Uuid,
+    pub status: String,
     created_at: chrono::DateTime<Utc>,
 }
 
@@ -66,7 +67,7 @@ async fn list_by_user_id(
             Ok(list_transformed)
         }
         Err(err) => {
-            tracing::error!("InvoiceRepository.list_by_user_id :{:?}", err);
+            error!("InvoiceRepository.list_by_user_id :{:?}", err);
             Err(ReadingInvoiceError::UnmappedError)
         }
     }
@@ -83,12 +84,11 @@ async fn create(
         "INSERT INTO invoice (id, user_id, status, created_at) VALUES ('{}','{}', 'draft', '{}');",
         invoice_id, user_id, now
     );
-    println!("{}", q_invoice);
     let r_invoice = sqlx::query(&q_invoice).execute(conn).await;
     match r_invoice {
         Ok(_) => {}
         Err(error) => {
-            tracing::error!("InvoiceRepository.create :{:?}", error);
+            error!("InvoiceRepository.create :{:?}", error);
             return Err(CreatingInvoiceError::UnmappedError);
         }
     }
@@ -108,7 +108,7 @@ async fn create(
         match r_invoice_item {
             Ok(_) => insert_iten.push(item_id),
             Err(error) => {
-                tracing::error!("InvoiceRepository.create :{:?}", error);
+                error!("InvoiceRepository.create :{:?}", error);
                 return Err(CreatingInvoiceError::UnmappedError);
             }
         }
@@ -139,16 +139,17 @@ async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingIn
             Ok(item)
         }
         Err(err) => {
-            tracing::error!("InvoiceRepository.get_by_id :{:?}", err);
+            error!("InvoiceRepository.get_by_id :{:?}", err);
             Err(ReadingInvoiceError::UnmappedError)
         }
     }
 }
 
-async fn get_charged_with_error(conn: &PgPool) -> Result<Vec<Invoice>, ReadingInvoiceError> {
+async fn list_all_should_be_charged(conn: &PgPool) -> Result<Vec<Invoice>, ReadingInvoiceError> {
     let q_invoice = format!(
-        "SELECT invoice WHERE status = '{}'",
-        InvoiceStatus::ChargedWithError
+        "SELECT * FROM invoice WHERE status = '{}' OR status = '{}'",
+        InvoiceStatus::ChargedWithError,
+        InvoiceStatus::Pending,
     );
     let result = sqlx::query_as::<_, InvoiceDAO>(&q_invoice)
         .fetch_all(conn)
@@ -167,7 +168,7 @@ async fn get_charged_with_error(conn: &PgPool) -> Result<Vec<Invoice>, ReadingIn
             Ok(mapped_list)
         }
         Err(err) => {
-            tracing::error!("InvoiceRepository.get_by_id :{:?}", err);
+            error!("InvoiceRepository.list_all_should_be_charged :{:?}", err);
             Err(ReadingInvoiceError::UnmappedError)
         }
     }
@@ -196,8 +197,7 @@ async fn update(
             Ok(item)
         }
         Err(error) => {
-            println!("{:?}", error);
-            tracing::error!("InvoiceRepository.update :{:?}", error);
+            error!("InvoiceRepository.update :{:?}", error);
             Err(UpdatingInvoiceError::UnmappedError)
         }
     }
@@ -215,8 +215,8 @@ impl ReadingInvoice for InvoiceRepository {
     async fn get_by_id(&self, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError> {
         get_by_id(&self.conn, invoice_id).await
     }
-    async fn get_charged_with_error(&self) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-        get_charged_with_error(&self.conn).await
+    async fn list_all_should_be_charged(&self) -> Result<Vec<Invoice>, ReadingInvoiceError> {
+        list_all_should_be_charged(&self.conn).await
     }
 }
 

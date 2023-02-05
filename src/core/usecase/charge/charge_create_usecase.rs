@@ -39,9 +39,10 @@ impl ChargeCreateUsecase {
         };
         if invoice.status != InvoiceStatus::Draft
             && invoice.status != InvoiceStatus::ChargedWithError
+            && invoice.status != InvoiceStatus::Pending
         {
             return Err(String::from(
-                "Invoice can only be charged if status is Draft",
+                "Invoice can could not be charged because of current status",
             ));
         }
         let result_payment_method = self

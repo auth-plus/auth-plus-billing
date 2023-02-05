@@ -1,7 +1,17 @@
 use crate::core::dto::charge::{Charge, ChargeStatus};
 use crate::core::usecase::driven::creating_charge::{CreatingCharge, CreatingChargeError};
+use chrono::Utc;
+use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
+#[derive(sqlx::FromRow)]
+pub struct ChargeDAO {
+    pub id: Option<Uuid>,
+    pub invoice_id: Uuid,
+    pub status: String,
+    pub payment_method_id: Uuid,
+    pub created_at: chrono::DateTime<Utc>,
+}
 
 #[derive(Clone)]
 pub struct ChargeRepository {
@@ -36,7 +46,7 @@ async fn create(
             Ok(item)
         }
         Err(error) => {
-            tracing::error!("ChargeRepository.create :{:?}", error);
+            error!("ChargeRepository.create :{:?}", error);
             Err(CreatingChargeError::UnmappedError)
         }
     }
@@ -91,7 +101,7 @@ mod test {
         let payment_method_id: Uuid = UUIDv4.fake();
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let method = Method::Pix;
+        let method = Method::CreditCard;
         let cc_info = CreditCardInfo {
             last4digit: String::from("1234"),
             flag: String::from("visa"),

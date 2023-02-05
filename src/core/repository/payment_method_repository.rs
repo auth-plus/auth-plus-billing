@@ -5,6 +5,7 @@ use crate::core::usecase::driven::creating_payment_method::{
 use crate::core::usecase::driven::reading_payment_method::{
     ReadingPaymentMethod, ReadingPaymentMethodError,
 };
+use log::error;
 pub use sqlx::postgres::PgPool;
 use sqlx::types::Json;
 use uuid::Uuid;
@@ -47,7 +48,7 @@ async fn get_default_by_user_id(
             Ok(item)
         }
         Err(err) => {
-            tracing::error!("PaymentMethodRepository.get_default_by_user_id :{:?}", err);
+            error!("PaymentMethodRepository.get_default_by_user_id :{:?}", err);
             Err(ReadingPaymentMethodError::UnmappedError)
         }
     }
@@ -75,7 +76,7 @@ async fn create(
             Ok(pm)
         }
         Err(error) => {
-            tracing::error!("PaymentMethodRepository.create :{:?}", error);
+            error!("PaymentMethodRepository.create :{:?}", error);
             Err(CreatingPaymentMethodError::UnmappedError)
         }
     }

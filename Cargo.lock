@@ -298,6 +298,7 @@ dependencies = [
  "fake",
  "futures-util",
  "lazy_static",
+ "log",
  "mockall",
  "opentelemetry",
  "opentelemetry-zipkin",

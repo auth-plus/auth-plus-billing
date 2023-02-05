@@ -1,5 +1,6 @@
 use crate::core::dto::gateway::Gateway;
 use crate::core::usecase::driven::reading_gateway::{ReadingGateway, ReadingGatewayError};
+use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -32,7 +33,7 @@ async fn get_priority_list(conn: &PgPool) -> Result<Vec<Gateway>, ReadingGateway
             Ok(mapped_list)
         }
         Err(err) => {
-            tracing::error!("GatewayRepository.get_priority_list :{:?}", err);
+            error!("GatewayRepository.get_priority_list :{:?}", err);
             Err(ReadingGatewayError::UnmappedError)
         }
     }
