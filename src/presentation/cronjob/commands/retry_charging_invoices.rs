@@ -20,7 +20,7 @@ pub async fn retry_charging_invoices() -> Result<(), String> {
             Err(error) => error_list.push(error),
         }
     }
-    if error_list.len() > 0 {
+    if !error_list.is_empty() {
         let all_errors = error_list.join(";");
         return Err(all_errors);
     }

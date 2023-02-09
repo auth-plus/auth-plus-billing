@@ -15,7 +15,7 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// retry_charging_invoices
-    RCI,
+    Rci,
 }
 
 #[tokio::main]
@@ -23,7 +23,7 @@ pub async fn start() -> std::io::Result<()> {
     let cli = Cli::parse();
     info!("Job {:?} starting", cli.command);
     let result = match cli.command {
-        Commands::RCI => retry_charging_invoices(),
+        Commands::Rci => retry_charging_invoices(),
     };
 
     if let Err(err) = result.await {
