@@ -1,6 +1,5 @@
 use crate::core::dto::charge::{Charge, ChargeStatus};
 use crate::core::usecase::driven::creating_charge::{CreatingCharge, CreatingChargeError};
-use chrono::Utc;
 use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
@@ -10,7 +9,7 @@ pub struct ChargeDAO {
     pub invoice_id: Uuid,
     pub status: String,
     pub payment_method_id: Uuid,
-    pub created_at: chrono::DateTime<Utc>,
+    pub created_at: time::OffsetDateTime,
 }
 
 #[derive(Clone)]

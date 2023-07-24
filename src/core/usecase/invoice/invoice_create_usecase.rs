@@ -70,7 +70,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_succeed_creating_invoice_by_user() {
-        let now = chrono::offset::Utc::now().to_string();
+        let now = time::OffsetDateTime::now_utc().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
