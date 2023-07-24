@@ -114,7 +114,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_succeed_creating_charge() {
-        let now = chrono::offset::Utc::now().to_string();
+        let now = time::OffsetDateTime::now_utc().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
@@ -252,7 +252,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_payment_method_provider_went_wrong() {
-        let now = chrono::offset::Utc::now().to_string();
+        let now = time::OffsetDateTime::now_utc().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let invoice = Invoice {
@@ -298,7 +298,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_charge_provider_went_wrong() {
-        let now = chrono::offset::Utc::now().to_string();
+        let now = time::OffsetDateTime::now_utc().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
@@ -361,7 +361,7 @@ mod test {
 
     #[actix_rt::test]
     async fn should_fail_when_invoice_updating_provider_went_wrong() {
-        let now = chrono::offset::Utc::now().to_string();
+        let now = time::OffsetDateTime::now_utc().to_string();
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();

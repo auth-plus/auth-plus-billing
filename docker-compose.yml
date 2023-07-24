@@ -8,8 +8,12 @@ services:
     ports:
       - '5002:5002'
     command: tail -f /dev/null
-    env_file:
-      - .env
+    environment:
+      APP_NAME: auth-plus-billing
+      RUST_ENV: development
+      PORT: 5002
+      DATABASE_URL: postgres://root:db_password@database:5432/billing
+      KAFKA_HOST: kafka:9092
     volumes:
       - .:/app
     restart: always

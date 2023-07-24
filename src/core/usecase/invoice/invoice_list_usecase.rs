@@ -89,7 +89,7 @@ mod test {
         let id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let user = User { id, external_id };
-        let now = chrono::offset::Utc::now().to_string();
+        let now = time::OffsetDateTime::now_utc().to_string();
         let filter = InvoiceFilterSchema {
             date_init: None,
             date_end: None,

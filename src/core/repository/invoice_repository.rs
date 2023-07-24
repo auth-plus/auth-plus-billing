@@ -4,9 +4,9 @@ use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingIn
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
 use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingInvoiceError};
 use crate::core::usecase::invoice::invoice_list_usecase::InvoiceFilterSchema;
-use chrono::{self, Utc};
 use log::error;
 pub use sqlx::postgres::PgPool;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
@@ -14,7 +14,7 @@ pub struct InvoiceDAO {
     id: Option<Uuid>,
     pub user_id: Uuid,
     pub status: String,
-    created_at: chrono::DateTime<Utc>,
+    created_at: time::OffsetDateTime,
 }
 
 #[derive(Clone)]
@@ -79,7 +79,7 @@ async fn create(
     itens: &[InvoiceItem],
 ) -> Result<Invoice, CreatingInvoiceError> {
     let invoice_id = Uuid::new_v4();
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
     let q_invoice = format!(
         "INSERT INTO invoice (id, user_id, status, created_at) VALUES ('{}','{}', 'draft', '{}');",
         invoice_id, user_id, now
