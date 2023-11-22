@@ -34,21 +34,27 @@ futures-util = "0.3.28"
 lazy_static = "1.4.0"
 log = "0.4.19"
 mockall = "0.11"
-opentelemetry = "0.19.0"
-opentelemetry-zipkin = "0.17.0"
+opentelemetry = "0.21.0"
+opentelemetry-zipkin = "0.19.0"
 prometheus = { version = "0.13.3", features = ["process"] }
-rdkafka = { version = "0.33.2", features = ["cmake-build"] }
+rdkafka = { version = "0.36.0", features = ["cmake-build"] }
 rust_decimal = "1.30.0"
 rust_decimal_macros = "1.30.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sqlx = { version = "0.7.1", features = ["runtime-tokio-rustls", "postgres", "uuid", "json", "time"] }
+sqlx = { version = "0.7.1", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "json",
+    "time",
+] }
 sqlx-core = "0.7.1"
 tokio = { version = "1.29.1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 uuid = { version = "1.4", features = ["v4", "serde"] }
-tracing-opentelemetry = "0.19.0"
+tracing-opentelemetry = "0.22.0"
 tracing-actix-web = { version = "0.7.1", features = ["opentelemetry_0_18"] }
 actix-rt = "2.8"
 fake = "2.6"
@@ -56,4 +62,4 @@ time = { version = "0.3.23", features = ["macros"] }
 
 [dev-dependencies]
 actix-rt = "2.7"
-fake = { version = "2.5", features=['uuid']}
+fake = { version = "2.5", features = ['uuid'] }
