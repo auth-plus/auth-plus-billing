@@ -27,39 +27,39 @@ bench = false
 [dependencies]
 actix-cors = "0.7.0"
 actix-service = "2.0.2"
-actix-web = "4.3.1"
-async-trait = "0.1"
-clap = { version = "4.3.19", features = ["derive"] }
-futures-util = "0.3.28"
-lazy_static = "1.4.0"
-log = "0.4.19"
-mockall = "0.13"
-opentelemetry = "0.24.0"
-opentelemetry-zipkin = "0.22.0"
-prometheus = { version = "0.13.3", features = ["process"] }
-rdkafka = { version = "0.36.0", features = ["cmake-build"] }
-rust_decimal = "1.30.0"
-rust_decimal_macros = "1.30.0"
+actix-web = "4.9.0"
+async-trait = "0.1.83"
+clap = { version = "4.5.20", features = ["derive"] }
+futures-util = "0.3.31"
+lazy_static = "1.5.0"
+log = "0.4.22"
+mockall = "0.13.0"
+opentelemetry = "0.26.0"
+opentelemetry-zipkin = "0.26.0"
+prometheus = { version = "0.13.4", features = ["process"] }
+rdkafka = { version = "0.36.2", features = ["cmake-build"] }
+rust_decimal = "1.36.0"
+rust_decimal_macros = "1.36.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sqlx = { version = "0.8.1", features = [
+sqlx = { version = "0.8.2", features = [
     "runtime-tokio-rustls",
     "postgres",
     "uuid",
     "json",
     "time",
 ] }
-sqlx-core = "0.8.1"
-tokio = { version = "1.29.1", features = ["full"] }
+sqlx-core = "0.8.2"
+tokio = { version = "1.40.0", features = ["full"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-uuid = { version = "1.4", features = ["v4", "serde"] }
-tracing-opentelemetry = "0.25.0"
-tracing-actix-web = { version = "0.7.1", features = ["opentelemetry_0_18"] }
-actix-rt = "2.8"
-fake = "2.6"
-time = { version = "0.3.23", features = ["macros"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+uuid = { version = "1.10", features = ["v4", "serde"] }
+tracing-opentelemetry = "0.27.0"
+tracing-actix-web = { version = "0.7.13", features = ["opentelemetry_0_18"] }
+actix-rt = "2.10"
+fake = "2.10"
+time = { version = "0.3.36", features = ["macros"] }
 
 [dev-dependencies]
-actix-rt = "2.7"
-fake = { version = "2.5", features = ['uuid'] }
+actix-rt = "2.10"
+fake = { version = "2.10", features = ['uuid'] }
