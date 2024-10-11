@@ -44,7 +44,7 @@ nix develop # enter dev shell
 ### Machine state of invoice
 
 1. Creating an invoice: `POST /invoice` -> **draft**
-2. Finish the building invoice and try to charge: `POST /charge` -> **pending** -> Go to Kafka
+2. Finish building invoice and try to charge: `POST /charge` -> **pending** -> Go to Kafka
 3. Receive a TOPIC on Kafka to try to charge:
     - `TOPIC charge_invoice` -> Gateway success -> **paid**
     - `TOPIC charge_invoice` -> Gateway fail -> **charged_with_error**
@@ -60,7 +60,7 @@ All flows that involve Gateway that change of status is made by a webhook.
 
 An invoice is a list of items containing a description, amount, and quantity. A charge is the acting of register a invoice in a payment gateway. We currently track a lifetime of an invoice by using the column status. A payment method is like credit-card or pix key.
 
-### Why Payment Gateway should be dinamyc?
+### Why Payment Gateway should be dynamic?
 
 There's no precise answer to this, but could be: a cost for each transaction, temporary unavailability, payment method issue (pix only in brazil), batch reconciliation distribution,  etc.
 

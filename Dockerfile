@@ -1,6 +1,6 @@
 FROM rust:1.80.1 as dependency
 WORKDIR /app
-# dependencies need this lib
+# dependencies need lib below
 RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-config
 COPY . .
 RUN cargo build --release
