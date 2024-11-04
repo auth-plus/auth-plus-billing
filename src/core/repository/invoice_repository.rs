@@ -3,13 +3,12 @@ use crate::core::dto::invoice_item::InvoiceItem;
 use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingInvoiceError};
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
 use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingInvoiceError};
-use crate::core::usecase::invoice::invoice_list_usecase::InvoiceFilterSchema;
 use log::error;
 pub use sqlx::postgres::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Debug)]
 pub struct InvoiceDAO {
     id: Option<Uuid>,
     pub user_id: Uuid,
@@ -25,34 +24,12 @@ pub struct InvoiceRepository {
 async fn list_by_user_id(
     conn: &PgPool,
     user_id: Uuid,
-    filter: &InvoiceFilterSchema,
 ) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-    let result = match &filter.date_init {
-        None => match &filter.date_end {
-            None => sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1 ORDER BY created_at ASC")
+    let result =
+        sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE user_id :: text = $1")
             .bind(user_id.to_string())
             .fetch_all(conn)
-            .await,
-            Some(end) => sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1 AND created_at < $2 ORDER BY created_at ASC")
-            .bind(user_id.to_string())
-            .bind(end)
-            .fetch_all(conn)
-            .await
-        },
-        Some(init) => match &filter.date_end {
-            None => sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1 AND created_at > $2 ORDER BY created_at ASC")
-            .bind(user_id.to_string())
-            .bind(init)
-            .fetch_all(conn)
-            .await,
-            Some(end) => sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  user_id :: text = $1 AND created_at > $2 AND created_at < $3 ORDER BY created_at ASC")
-            .bind(user_id.to_string())
-            .bind(init)
-            .bind(end)
-            .fetch_all(conn)
-            .await,
-        }
-    };
+            .await;
     match result {
         Ok(list) => {
             let list_transformed = list
@@ -205,12 +182,8 @@ async fn update(
 
 #[async_trait::async_trait]
 impl ReadingInvoice for InvoiceRepository {
-    async fn list_by_user_id(
-        &self,
-        user_id: Uuid,
-        filter: &InvoiceFilterSchema,
-    ) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-        list_by_user_id(&self.conn, user_id, filter).await
+    async fn list_by_user_id(&self, user_id: Uuid) -> Result<Vec<Invoice>, ReadingInvoiceError> {
+        list_by_user_id(&self.conn, user_id).await
     }
     async fn get_by_id(&self, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError> {
         get_by_id(&self.conn, invoice_id).await
@@ -257,7 +230,6 @@ mod test {
         core::{
             dto::{invoice::InvoiceStatus, invoice_item::InvoiceItem},
             repository::orm::{create_invoice, create_user, delete_invoice, delete_user},
-            usecase::invoice::invoice_list_usecase::InvoiceFilterSchema,
         },
     };
     use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
@@ -270,10 +242,6 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
-        let filter = InvoiceFilterSchema {
-            date_init: None,
-            date_end: None,
-        };
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_list_invoices: user setup went wrong");
@@ -281,7 +249,7 @@ mod test {
             .await
             .expect("should_list_invoices: invoice setup went wrong");
 
-        let result = list_by_user_id(&conn, user_id, &filter).await;
+        let result = list_by_user_id(&conn, user_id).await;
 
         match result {
             Ok(list) => {

@@ -3,8 +3,9 @@ mod invoice_create_tests {
     use auth_plus_billing::{
         config::database::get_connection,
         core::{
-            dto::{invoice::Invoice, invoice_item::InvoiceItem},
+            dto::invoice_item::InvoiceItem,
             repository::orm::{create_user, delete_invoice, delete_user},
+            usecase::invoice::invoice_insert_item_usecase::InvoiceInsertItemResponse,
         },
         presentation::http::routes::invoice::{self, CreateInvoiceInputSchema},
     };
@@ -42,15 +43,20 @@ mod invoice_create_tests {
             .uri("/invoice")
             .set_json(web::Json(payload))
             .to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::OK);
-        let body: Invoice = test::read_body_json(resp).await;
-        delete_invoice(&conn, body.id)
-            .await
-            .expect("should_create_invoice: invoice remove went wrong");
-        delete_user(&conn, user_id)
-            .await
-            .expect("should_create_invoice: user remove went wrong");
+        let body: InvoiceInsertItemResponse = test::call_and_read_body_json(&app, req).await;
+        match body {
+            InvoiceInsertItemResponse::Invoice(invoice) => {
+                delete_invoice(&conn, invoice.id)
+                    .await
+                    .expect("should_create_invoice: invoice remove went wrong");
+                delete_user(&conn, user_id)
+                    .await
+                    .expect("should_create_invoice: user remove went wrong");
+            }
+            InvoiceInsertItemResponse::Item(_) => {
+                panic!("Test went wrong: should not create invoice item")
+            }
+        }
     }
 
     #[actix_web::test]

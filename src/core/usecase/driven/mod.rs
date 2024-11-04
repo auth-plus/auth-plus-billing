@@ -1,6 +1,7 @@
 pub mod creating_charge;
 pub mod creating_gateway_integration;
 pub mod creating_invoice;
+pub mod creating_invoice_item;
 pub mod creating_payment_method;
 pub mod creating_user;
 pub mod reading_gateway;

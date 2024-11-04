@@ -1,4 +1,4 @@
-FROM rust:1.80.1 as dependency
+FROM rust:1.80.1 AS dependency
 WORKDIR /app
 # dependencies need lib below
 RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-config
@@ -7,7 +7,7 @@ RUN cargo build --release
 RUN cargo build --release --bin  kafka
 RUN cargo build --release --bin  cronjob
 
-FROM ubuntu:22.04 as deploy
+FROM ubuntu:22.04 AS deploy
 WORKDIR /app
 COPY --from=dependency /app/target/release/http /app
 COPY --from=dependency /app/target/release/kafka /app
