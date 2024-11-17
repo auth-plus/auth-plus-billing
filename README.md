@@ -25,7 +25,8 @@ cargo run --bin kafka # download all dependencies and start kafka consumer serve
 cargo run --bin cronjob # download all dependencies and start cronjob (only works on make dev)
 cargo test # run integration and unit tests (only works on make dev)
 cargo clippy # run lint (don't work on make dev)
-cargo fmt # run lint (don't work on make dev)
+cargo fmt # run formatter (don't work on make dev)
+cargo audit # run audit on packages (don't work on make dev), see https://crates.io/crates/cargo-audit
 ```
 
 ### Commands (nix)
