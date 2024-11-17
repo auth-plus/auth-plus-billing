@@ -28,11 +28,6 @@ mod invoice_list_tests {
             .uri(&format!("/invoice/{}", external_id.to_string()))
             .to_request();
         let resp = test::call_service(&app, req).await;
-        /*
-        TODO: fix test to assert response payload as below, but still be able to assert status
-        let result = test::read_body(resp).await;
-        println!("{:?}", result[0]);
-        */
         assert_eq!(resp.status(), StatusCode::OK);
         delete_invoice(&conn, invoice_id)
             .await

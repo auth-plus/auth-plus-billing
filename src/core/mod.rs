@@ -8,7 +8,7 @@ pub struct ChargeUsecase {
     pub create: usecase::charge::charge_create_usecase::ChargeCreateUsecase,
 }
 pub struct InvoiceUsecase {
-    pub create: usecase::invoice::invoice_create_usecase::InvoiceCreateUsecase,
+    pub create: usecase::invoice::invoice_insert_item_usecase::InvoiceInsertItemUsecase,
     pub list: usecase::invoice::invoice_list_usecase::InvoiceListUsecase,
     pub update: usecase::invoice::invoice_update_usecase::InvoiceUpdateUsecase,
 }
@@ -33,6 +33,8 @@ pub async fn get_core() -> Core {
     let charge_repository = repository::charge_repository::ChargeRepository::new(conn.clone());
     let gateway_repository = repository::gateway_repository::GatewayRepository::new(conn.clone());
     let invoice_repository = repository::invoice_repository::InvoiceRepository::new(conn.clone());
+    let invoice_item_repository =
+        repository::invoice_item_repository::InvoiceItemRepository::new(conn.clone());
     let user_repository = repository::user_repository::UserRepository::new(conn.clone());
     let payment_method_repository =
         repository::payment_method_repository::PaymentMethodRepository::new(conn.clone());
@@ -46,10 +48,13 @@ pub async fn get_core() -> Core {
         creating_charge: Box::new(charge_repository),
         updating_invoice: Box::new(invoice_repository.clone()),
     };
-    let invoice_create_usecase = usecase::invoice::invoice_create_usecase::InvoiceCreateUsecase {
-        reading_user: Box::new(user_repository.clone()),
-        creating_invoice: Box::new(invoice_repository.clone()),
-    };
+    let invoice_create_usecase =
+        usecase::invoice::invoice_insert_item_usecase::InvoiceInsertItemUsecase {
+            reading_user: Box::new(user_repository.clone()),
+            reading_invoice: Box::new(invoice_repository.clone()),
+            creating_invoice: Box::new(invoice_repository.clone()),
+            creating_invoice_item: Box::new(invoice_item_repository.clone()),
+        };
     let invoice_list_usecase = usecase::invoice::invoice_list_usecase::InvoiceListUsecase {
         reading_user: Box::new(user_repository.clone()),
         reading_invoice: Box::new(invoice_repository.clone()),

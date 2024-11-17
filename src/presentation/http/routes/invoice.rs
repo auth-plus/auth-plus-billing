@@ -1,7 +1,4 @@
-use crate::core::{
-    self, dto::invoice_item::InvoiceItem,
-    usecase::invoice::invoice_list_usecase::InvoiceFilterSchema,
-};
+use crate::core::{self, dto::invoice_item::InvoiceItem};
 use actix_web::{get, patch, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 
@@ -20,8 +17,8 @@ pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl R
         .create_invoice(&json.external_user_id, &json.itens)
         .await
     {
-        Ok(invoce) => {
-            let json = web::Json(invoce);
+        Ok(invoice) => {
+            let json = web::Json(invoice);
             HttpResponse::Ok().json(json)
         }
         Err(error) => {
@@ -33,23 +30,15 @@ pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl R
 
 #[derive(Serialize)]
 pub struct GetInvoiceOutputSchema {
-    invoces: Vec<core::dto::invoice::Invoice>,
+    invoices: Vec<core::dto::invoice::Invoice>,
 }
 
 #[get("/invoice/{user_id}")]
-pub async fn get_invoice(
-    external_user_id: web::Path<String>,
-    filter: web::Query<InvoiceFilterSchema>,
-) -> impl Responder {
+pub async fn get_invoice(external_user_id: web::Path<String>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x
-        .invoice
-        .list
-        .get_by_user_id(&external_user_id, &filter)
-        .await
-    {
-        Ok(invoces) => {
-            let resp = GetInvoiceOutputSchema { invoces };
+    match core_x.invoice.list.get_by_user_id(&external_user_id).await {
+        Ok(invoices) => {
+            let resp = GetInvoiceOutputSchema { invoices };
             let json = web::Json(resp);
             HttpResponse::Ok().json(json)
         }
@@ -75,8 +64,8 @@ pub async fn update_invoice(json: web::Json<UpdateInvoiceInputSchema>) -> impl R
         .update(&json.invoice_id, &json.status)
         .await
     {
-        Ok(invoce) => {
-            let json = web::Json(invoce);
+        Ok(invoice) => {
+            let json = web::Json(invoice);
             HttpResponse::Ok().json(json)
         }
         Err(error) => {
