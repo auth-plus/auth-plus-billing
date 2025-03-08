@@ -1,25 +1,22 @@
 use super::env_var::get_config;
-use tracing_subscriber::filter::EnvFilter;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use opentelemetry_zipkin::ZipkinExporter;
+use opentelemetry_sdk::{trace::SdkTracerProvider, Resource};
+use opentelemetry::global;
+use opentelemetry_sdk::trace::RandomIdGenerator;
+pub fn configure_tracing() {
 
-pub fn configure_tracing(level: String) {
     let env = get_config();
-    opentelemetry::global::set_text_map_propagator(opentelemetry_zipkin::Propagator::new());
+    global::set_text_map_propagator(opentelemetry_zipkin::Propagator::new());
+    let exporter = ZipkinExporter::builder().with_collector_endpoint("http://zipkin:9411/api/v2/spans").build().expect("fail on building exporter");
+    let provider = SdkTracerProvider::builder()
+        .with_simple_exporter(exporter)
+        .with_id_generator(RandomIdGenerator::default())
+        .with_resource(
+            Resource::builder_empty()
+                .with_service_name(env.app.name)
+                .build(),
+        )
+        .build();
 
-    let tracer = opentelemetry_zipkin::new_pipeline()
-        .with_service_name(env.app.name)
-        .with_collector_endpoint("http://zipkin:9411/api/v2/spans")
-        .install_simple()
-        .expect("unable to install zipkin tracer");
-
-    let tracer = tracing_opentelemetry::layer().with_tracer(tracer);
-    let level = EnvFilter::new(level);
-
-    let subscriber = tracing_subscriber::fmt::layer();
-    tracing_subscriber::registry()
-        .with(subscriber)
-        .with(level)
-        .with(tracer)
-        .init();
+    global::set_tracer_provider(provider.clone());
 }
