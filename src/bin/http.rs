@@ -5,6 +5,6 @@ use auth_plus_billing::{
 
 fn main() -> std::io::Result<()> {
     Prometheus::init();
-    configure_tracing("info".to_owned());
+    configure_tracing();
     presentation::http::start()
 }
