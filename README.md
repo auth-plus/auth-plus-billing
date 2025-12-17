@@ -2,6 +2,8 @@
 
 [![codecov](https://codecov.io/gh/auth-plus/auth-plus-billing/branch/main/graph/badge.svg?token=PO6CQJDQJH)](https://codecov.io/gh/auth-plus/auth-plus-billing)
 
+[![Known Vulnerabilities](https://snyk.io/test/github/auth-plus/auth-plus-billing/badge.svg)](https://snyk.io/test/github/auth-plus/auth-plus-billing)
+
 A billing system should be able to
 
 - Create an invoice with items that must have a description, a quantity, and an amount

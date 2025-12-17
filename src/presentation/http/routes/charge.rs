@@ -10,7 +10,8 @@ pub struct CreateChargeInputSchema {
 #[post("/charge")]
 pub async fn create_charge(json: web::Json<CreateChargeInputSchema>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x.charge.create.create_charge(&json.invoice_id).await {
+    let result = core_x.charge.create.create_charge(&json.invoice_id).await;
+    match result {
         Ok(charge) => {
             let json = web::Json(charge);
             HttpResponse::Ok().json(json)

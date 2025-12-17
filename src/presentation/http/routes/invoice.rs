@@ -11,12 +11,12 @@ pub struct CreateInvoiceInputSchema {
 #[post("/invoice")]
 pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x
+    let result = core_x
         .invoice
         .create
         .create_invoice(&json.external_user_id, &json.itens)
-        .await
-    {
+        .await;
+    match result {
         Ok(invoice) => {
             let json = web::Json(invoice);
             HttpResponse::Ok().json(json)
@@ -36,7 +36,8 @@ pub struct GetInvoiceOutputSchema {
 #[get("/invoice/{user_id}")]
 pub async fn get_invoice(external_user_id: web::Path<String>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x.invoice.list.get_by_user_id(&external_user_id).await {
+    let result = core_x.invoice.list.get_by_user_id(&external_user_id).await;
+    match result {
         Ok(invoices) => {
             let resp = GetInvoiceOutputSchema { invoices };
             let json = web::Json(resp);
@@ -58,12 +59,12 @@ pub struct UpdateInvoiceInputSchema {
 #[patch("/invoice")]
 pub async fn update_invoice(json: web::Json<UpdateInvoiceInputSchema>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x
+    let result = core_x
         .invoice
         .update
         .update(&json.invoice_id, &json.status)
-        .await
-    {
+        .await;
+    match result {
         Ok(invoice) => {
             let json = web::Json(invoice);
             HttpResponse::Ok().json(json)
