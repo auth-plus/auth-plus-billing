@@ -19,12 +19,12 @@ pub async fn create_payment_method(
 ) -> impl Responder {
     let core_x = core::get_core().await;
     let method = Method::from(json.method.as_str());
-    match core_x
+    let result = core_x
         .payment_method
         .create
         .create(&json.external_user_id, json.is_default, method, &json.info)
-        .await
-    {
+        .await;
+    match result {
         Ok(pm) => {
             let json = web::Json(pm);
             HttpResponse::Ok().json(json)

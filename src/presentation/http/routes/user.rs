@@ -10,7 +10,8 @@ pub struct CreateUserInputSchema {
 #[post("/user")]
 pub async fn create_user(json: web::Json<CreateUserInputSchema>) -> impl Responder {
     let core_x = core::get_core().await;
-    match core_x.user.create.create_user(&json.external_id).await {
+    let result = core_x.user.create.create_user(&json.external_id).await;
+    match result {
         Ok(user) => {
             let json = web::Json(user);
             HttpResponse::Ok().json(json)
