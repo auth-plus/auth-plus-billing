@@ -60,6 +60,8 @@ actix-rt = "2.11"
 fake = "4.4.0"
 time = { version = "0.3.44", features = ["macros"] }
 opentelemetry_sdk = "0.31.0"
+reqwest = { version = "0.13.1", features = ["json"] }
+anyhow = "1.0.100"
 
 [dev-dependencies]
 actix-rt = "2.10"

@@ -1,5 +1,5 @@
 mod invoice_create_tests {
-    use actix_web::{http::StatusCode, test, web, App};
+    use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
         core::{
@@ -9,7 +9,7 @@ mod invoice_create_tests {
         },
         presentation::http::routes::invoice::{self, CreateInvoiceInputSchema},
     };
-    use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
+    use fake::{Fake, Faker, faker::lorem::en::Sentence, uuid::UUIDv4};
     use rust_decimal::Decimal;
     use uuid::Uuid;
 

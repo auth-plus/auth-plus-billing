@@ -74,12 +74,7 @@ async fn create(
         let item_id = Uuid::new_v4();
         let q_invoice_item = format!(
             "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
-            item_id,
-            invoice_id,
-            it.description,
-            it.quantity,
-            it.amount,
-            it.currency
+            item_id, invoice_id, it.description, it.quantity, it.amount, it.currency
         );
         let r_invoice_item = sqlx::query(&q_invoice_item).execute(conn).await;
         match r_invoice_item {
@@ -224,7 +219,7 @@ impl InvoiceRepository {
 #[cfg(test)]
 mod test {
 
-    use super::{create, get_by_id, list_by_user_id, InvoiceDAO};
+    use super::{InvoiceDAO, create, get_by_id, list_by_user_id};
     use crate::{
         config::database::get_connection,
         core::{
@@ -232,7 +227,7 @@ mod test {
             repository::orm::{create_invoice, create_user, delete_invoice, delete_user},
         },
     };
-    use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
+    use fake::{Fake, Faker, faker::lorem::en::Sentence, uuid::UUIDv4};
     use rust_decimal::Decimal;
     use uuid::Uuid;
 

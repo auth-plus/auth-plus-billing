@@ -27,11 +27,7 @@ async fn create(
     let status = ChargeStatus::Progress;
     let q_charge = format!(
         "INSERT INTO charge (id, invoice_id, external_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}', '{}');",
-        charge_id,
-        invoice_id,
-        external_id,
-        payment_method_id,
-        status
+        charge_id, invoice_id, external_id, payment_method_id, status
     );
     let result_charge = sqlx::query(&q_charge).execute(conn).await;
     match result_charge {
@@ -87,7 +83,7 @@ mod test {
             },
         },
     };
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_rt::test]

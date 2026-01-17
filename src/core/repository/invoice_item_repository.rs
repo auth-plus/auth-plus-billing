@@ -28,14 +28,9 @@ async fn insert_item(
 ) -> Result<InvoiceItem, CreatingInvoiceItemError> {
     let item_id = Uuid::new_v4();
     let q_invoice_item = format!(
-            "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
-            item_id,
-            invoice_id,
-            item.description,
-            item.quantity,
-            item.amount,
-            item.currency
-        );
+        "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
+        item_id, invoice_id, item.description, item.quantity, item.amount, item.currency
+    );
     match sqlx::query(&q_invoice_item).execute(conn).await {
         Ok(_) => (),
         Err(error) => {
@@ -81,7 +76,7 @@ mod test {
             repository::orm::{create_invoice, create_user, delete_invoice, delete_user},
         },
     };
-    use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
+    use fake::{Fake, Faker, faker::lorem::en::Sentence, uuid::UUIDv4};
     use rust_decimal::Decimal;
     use uuid::Uuid;
 

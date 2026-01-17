@@ -28,12 +28,12 @@ impl ChargeCreateUsecase {
             Ok(invoice) => invoice,
             Err(error) => match error {
                 ReadingInvoiceError::InvoiceNotFoundError => {
-                    return Err(String::from("invoice not found"))
+                    return Err(String::from("invoice not found"));
                 }
                 ReadingInvoiceError::UnmappedError => {
                     return Err(String::from(
                         "ReadingInvoiceError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -55,7 +55,7 @@ impl ChargeCreateUsecase {
                 ReadingPaymentMethodError::UnmappedError => {
                     return Err(String::from(
                         "ReadingPaymentMethodError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -67,12 +67,12 @@ impl ChargeCreateUsecase {
             Ok(charge) => charge,
             Err(error) => match error {
                 CreatingChargeError::KafkaProducerError => {
-                    return Err(String::from("Error on producing on kafka"))
+                    return Err(String::from("Error on producing on kafka"));
                 }
                 CreatingChargeError::UnmappedError => {
                     return Err(String::from(
                         "CreatingChargeError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -108,7 +108,7 @@ mod test {
             updating_invoice::{MockUpdatingInvoice, UpdatingInvoiceError},
         },
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use mockall::predicate;
     use uuid::Uuid;
 

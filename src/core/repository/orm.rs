@@ -1,4 +1,4 @@
-use sqlx::{postgres::PgQueryResult, Pool, Postgres};
+use sqlx::{Pool, Postgres, postgres::PgQueryResult};
 use uuid::Uuid;
 
 use crate::core::dto::{
@@ -113,10 +113,7 @@ pub async fn create_charge(
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_charge = format!(
         "INSERT INTO charge (id, invoice_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}');",
-        charge_id,
-        invoice_id,
-        payment_method_id,
-        status
+        charge_id, invoice_id, payment_method_id, status
     );
     sqlx::query(&q_charge).execute(conn).await
 }
@@ -138,10 +135,7 @@ pub async fn create_gateway_integration(
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_charge = format!(
         "INSERT INTO gateway_integration (id, invoice_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}');",
-        charge_id,
-        invoice_id,
-        payment_method_id,
-        status
+        charge_id, invoice_id, payment_method_id, status
     );
     sqlx::query(&q_charge).execute(conn).await
 }
@@ -170,7 +164,7 @@ pub async fn delete_gateway_integration_by_pm(
 
 #[cfg(test)]
 mod test {
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use uuid::Uuid;
 
     use crate::config::database::get_connection;

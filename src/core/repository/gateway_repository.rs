@@ -60,7 +60,7 @@ mod test {
         config::database::get_connection,
         core::repository::orm::{create_gateway, delete_gateway},
     };
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_rt::test]

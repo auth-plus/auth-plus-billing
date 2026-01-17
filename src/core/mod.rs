@@ -1,4 +1,5 @@
 pub mod dto;
+pub mod gateway;
 pub mod repository;
 pub mod usecase;
 
@@ -29,8 +30,12 @@ pub async fn get_core() -> Core {
     // Let start transaction
     let conn = get_connection().await;
 
+    // gateways
+    let _stripe: gateway::stripe::StripeGateway = gateway::stripe::StripeGateway::new();
+
     // repositories
-    let charge_repository = repository::charge_repository::ChargeRepository::new(conn.clone());
+    let charge_repository: repository::charge_repository::ChargeRepository =
+        repository::charge_repository::ChargeRepository::new(conn.clone());
     let gateway_repository = repository::gateway_repository::GatewayRepository::new(conn.clone());
     let invoice_repository = repository::invoice_repository::InvoiceRepository::new(conn.clone());
     let invoice_item_repository =

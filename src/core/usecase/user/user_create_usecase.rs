@@ -35,7 +35,7 @@ mod test {
         dto::user::User,
         usecase::driven::creating_user::{CreatingUserError, MockCreatingUser},
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use mockall::predicate;
     use uuid::Uuid;
 
