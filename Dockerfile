@@ -1,7 +1,7 @@
 FROM rust:1.93.0 AS dependency
 WORKDIR /app
 # dependencies need lib below
-RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-config
+RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-config libcurl4-openssl-dev libsasl2-dev
 COPY . .
 RUN cargo build --release
 RUN cargo build --release --bin  kafka
