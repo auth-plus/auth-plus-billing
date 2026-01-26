@@ -67,6 +67,8 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+        env:
+          - STRIPE_KEY: any-key-test
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:

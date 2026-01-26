@@ -84,8 +84,6 @@ async fn create_customer(
 
     match resp {
         Ok(body) => {
-            eprintln!("{}", body.status());
-            eprintln!("{}", body.url());
             if body.status().is_success() {
                 Ok(true)
             } else {
