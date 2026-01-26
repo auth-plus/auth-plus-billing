@@ -69,7 +69,7 @@ There's no precise answer to this, but could be: a cost for each transaction, te
 
 ## Dev Tips
 ```bash
-cargo build # update all crates
+cargo update # update all crates
 cargo clean # clean the target folder
 cargo audit # verify vulnerabilities of crates (may need this: https://crates.io/crates/cargo-audit)
 ```

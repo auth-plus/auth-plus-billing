@@ -13,6 +13,7 @@ services:
       PORT: 5002
       DATABASE_URL: postgres://root:db_password@database:5432/billing
       KAFKA_HOST: kafka:9092
+      STRIPE_KEY: 
     volumes:
       - .:/app
     restart: always

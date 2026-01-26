@@ -1,4 +1,4 @@
-FROM rust:1.92.0 AS dependency
+FROM rust:1.93.0 AS dependency
 WORKDIR /app
 # dependencies need lib below
 RUN apt-get update && apt-get -y install cmake protobuf-compiler libssl-dev pkg-config
