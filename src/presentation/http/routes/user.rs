@@ -5,12 +5,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize)]
 pub struct CreateUserInputSchema {
     pub external_id: String,
+    pub name: String,
+    pub email: String,
 }
 
 #[post("/user")]
 pub async fn create_user(json: web::Json<CreateUserInputSchema>) -> impl Responder {
     let core_x = core::get_core().await;
-    let result = core_x.user.create.create_user(&json.external_id).await;
+    let result = core_x
+        .user
+        .create
+        .create_user(&json.external_id, &json.name, &json.email)
+        .await;
     match result {
         Ok(user) => {
             let json = web::Json(user);

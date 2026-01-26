@@ -31,7 +31,7 @@ pub async fn get_core() -> Core {
     let conn = get_connection().await;
 
     // gateways
-    let _stripe: gateway::stripe::StripeGateway = gateway::stripe::StripeGateway::new();
+    let stripe: gateway::stripe::StripeGateway = gateway::stripe::StripeGateway::new();
 
     // repositories
     let charge_repository: repository::charge_repository::ChargeRepository =
@@ -77,6 +77,7 @@ pub async fn get_core() -> Core {
         };
     let user_create_usecase = usecase::user::user_create_usecase::UserCreateUsecase {
         creating_user: Box::new(user_repository),
+        gateway: Box::new(stripe),
     };
 
     Core {

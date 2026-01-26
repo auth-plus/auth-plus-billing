@@ -17,6 +17,10 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libsasl2-dev libzstd-dev
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -53,6 +57,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libsasl2-dev libzstd-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
           profile: minimal
@@ -63,6 +71,8 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+        env:
+          - STRIPE_KEY: any-key-test
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -77,7 +87,11 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          components: clippy
+          components: clippy  
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libsasl2-dev libzstd-dev
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

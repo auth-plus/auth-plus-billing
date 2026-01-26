@@ -11,7 +11,12 @@ pub async fn switch_case(topic: &str, data: &str) -> Result<(), String> {
         "USER_CREATED" => {
             let json: CreateUserInputSchema =
                 serde_json::from_str(data).expect("data on Kafka was no CreateUserInputSchema");
-            match core_x.user.create.create_user(&json.external_id).await {
+            match core_x
+                .user
+                .create
+                .create_user(&json.external_id, &json.name, &json.email)
+                .await
+            {
                 Ok(_) => Ok(()),
                 Err(error) => {
                     let resp = format!("Something wrong happen: {}", error);
