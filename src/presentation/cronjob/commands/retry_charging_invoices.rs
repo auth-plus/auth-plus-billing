@@ -29,7 +29,7 @@ pub async fn retry_charging_invoices() -> Result<(), String> {
 
 #[cfg(test)]
 mod test {
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
     use uuid::Uuid;
 
     use crate::{

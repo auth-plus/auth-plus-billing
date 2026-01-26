@@ -39,7 +39,7 @@ impl PaymentMethodCreateUsecase {
                 ReadingUserError::UnmappedError => {
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -50,7 +50,7 @@ impl PaymentMethodCreateUsecase {
                 ReadingGatewayError::UnmappedError => {
                     return Err(String::from(
                         "ReadingGatewayError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -64,7 +64,7 @@ impl PaymentMethodCreateUsecase {
                 CreatingPaymentMethodError::UnmappedError => {
                     return Err(String::from(
                         "CreatingPaymentMethodError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -103,7 +103,7 @@ mod test {
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
     use mockall::predicate;
     use uuid::Uuid;
 

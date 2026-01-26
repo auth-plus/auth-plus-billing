@@ -25,7 +25,7 @@ impl InvoiceListUsecase {
                 ReadingUserError::UnmappedError => {
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -69,7 +69,7 @@ mod test {
             reading_user::{MockReadingUser, ReadingUserError},
         },
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use mockall::predicate;
     use uuid::Uuid;
 

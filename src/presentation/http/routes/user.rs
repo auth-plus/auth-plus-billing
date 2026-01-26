@@ -1,5 +1,5 @@
 use crate::core;
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, post, web};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

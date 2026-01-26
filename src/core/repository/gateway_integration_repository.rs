@@ -18,9 +18,7 @@ async fn create(
     let gateway_integration_id = Uuid::new_v4();
     let q_gi = format!(
         "INSERT INTO gateway_integration (id, gateway_id, payment_method_id) VALUES ('{}', '{}', '{}');",
-        gateway_integration_id,
-        gateway_id,
-        payment_method_id,
+        gateway_integration_id, gateway_id, payment_method_id,
     );
     let result = sqlx::query(&q_gi).execute(conn).await;
     match result {
@@ -71,7 +69,7 @@ mod test {
             },
         },
     };
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_rt::test]

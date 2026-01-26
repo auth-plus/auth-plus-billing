@@ -18,10 +18,16 @@ pub struct Kafka {
 }
 
 #[derive(Clone)]
+pub struct Gateway {
+    pub stripe: String,
+}
+
+#[derive(Clone)]
 pub struct Config {
     pub app: App,
     pub database: Database,
     pub kafka: Kafka,
+    pub gateway: Gateway,
 }
 
 pub fn get_config() -> Config {
@@ -39,9 +45,13 @@ pub fn get_config() -> Config {
     let kafka = Kafka {
         url: env::var("KAFKA_HOST").expect("KAFKA_HOST is not set"),
     };
+    let gateway = Gateway {
+        stripe: env::var("STRIPE_KEY").expect("STRIPE_KEY is not set"),
+    };
     Config {
         app,
         database,
         kafka,
+        gateway,
     }
 }

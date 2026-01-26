@@ -26,7 +26,7 @@ impl InvoiceUpdateUsecase {
             Ok(invoice) => invoice,
             Err(error) => match error {
                 ReadingInvoiceError::InvoiceNotFoundError => {
-                    return Err(String::from("Invoice not found"))
+                    return Err(String::from("Invoice not found"));
                 }
                 ReadingInvoiceError::UnmappedError => {
                     return Err(String::from(
@@ -81,7 +81,7 @@ mod test {
             updating_invoice::{MockUpdatingInvoice, UpdatingInvoiceError},
         },
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use mockall::predicate;
     use uuid::Uuid;
 

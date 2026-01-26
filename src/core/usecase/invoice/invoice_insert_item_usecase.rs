@@ -45,7 +45,7 @@ impl InvoiceInsertItemUsecase {
                 ReadingUserError::UnmappedError => {
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
-                    ))
+                    ));
                 }
             },
         };
@@ -88,7 +88,7 @@ impl InvoiceInsertItemUsecase {
                         Err(_) => {
                             return Err(String::from(
                                 "CreatingInvoiceError::UnmappedError Something wrong happen",
-                            ))
+                            ));
                         }
                     }
                 }
@@ -116,7 +116,7 @@ mod test {
             invoice::invoice_insert_item_usecase::InvoiceInsertItemResponse,
         },
     };
-    use fake::{faker::lorem::en::Sentence, uuid::UUIDv4, Fake, Faker};
+    use fake::{Fake, Faker, faker::lorem::en::Sentence, uuid::UUIDv4};
     use mockall::predicate;
     use rust_decimal::Decimal;
     use uuid::Uuid;

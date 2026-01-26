@@ -91,7 +91,7 @@ mod test {
         config::database::get_connection,
         core::repository::orm::{create_user, delete_user},
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_rt::test]

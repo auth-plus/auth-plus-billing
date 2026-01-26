@@ -1,11 +1,11 @@
 mod user_create_tests {
-    use actix_web::{http::StatusCode, test, web, App};
+    use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
         core::{dto::user::User, repository::orm::delete_user},
         presentation::http::routes::user::{self, CreateUserInputSchema},
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_web::test]

@@ -67,6 +67,13 @@ An invoice is a list of items containing a description, amount, and quantity. A 
 
 There's no precise answer to this, but could be: a cost for each transaction, temporary unavailability, payment method issue (pix only in brazil), batch reconciliation distribution,  etc.
 
+## Dev Tips
+```bash
+cargo build # update all crates
+cargo clean # clean the target folder
+cargo audit # verify vulnerabilities of crates (may need this: https://crates.io/crates/cargo-audit)
+```
+
 ## TODO
 
 ### Development

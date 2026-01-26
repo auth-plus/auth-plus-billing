@@ -2,7 +2,7 @@ use crate::core::{
     self,
     dto::payment_method::{Method, PaymentMethodInfo},
 };
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, post, web};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

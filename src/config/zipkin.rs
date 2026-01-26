@@ -1,7 +1,7 @@
 use super::env_var::get_config;
 use opentelemetry::global;
 use opentelemetry_sdk::trace::RandomIdGenerator;
-use opentelemetry_sdk::{trace::SdkTracerProvider, Resource};
+use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use opentelemetry_zipkin::ZipkinExporter;
 pub fn configure_tracing() {
     let env = get_config();

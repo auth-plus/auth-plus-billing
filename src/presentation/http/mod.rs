@@ -2,11 +2,11 @@ pub mod routes;
 
 use crate::config::{
     self,
-    prometheus::{Prometheus, C_HTTP_FAIL, C_HTTP_SUCCESS},
+    prometheus::{C_HTTP_FAIL, C_HTTP_SUCCESS, Prometheus},
 };
 use actix_cors::Cors;
 use actix_service::Service;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpResponse, HttpServer, Responder, web};
 use routes::{charge, invoice, payment_method, user};
 use tracing_actix_web::TracingLogger;
 

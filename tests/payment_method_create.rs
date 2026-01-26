@@ -1,5 +1,5 @@
 mod payment_method_create_tests {
-    use actix_web::{http::StatusCode, test, web, App};
+    use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
         core::{
@@ -12,9 +12,9 @@ mod payment_method_create_tests {
         presentation::http::routes::payment_method::{self, CreatePaymentMethodInputSchema},
     };
     use fake::{
+        Fake,
         faker::{internet::en::FreeEmail, lorem::en::Word},
         uuid::UUIDv4,
-        Fake,
     };
     use uuid::Uuid;
 

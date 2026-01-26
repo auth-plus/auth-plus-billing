@@ -1,5 +1,5 @@
 mod invoice_update_tests {
-    use actix_web::{http::StatusCode, test, web, App};
+    use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
         core::{
@@ -8,7 +8,7 @@ mod invoice_update_tests {
         },
         presentation::http::routes::invoice::{self, UpdateInvoiceInputSchema},
     };
-    use fake::{uuid::UUIDv4, Fake};
+    use fake::{Fake, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_web::test]

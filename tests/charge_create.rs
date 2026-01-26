@@ -1,5 +1,5 @@
 mod charge_create_tests {
-    use actix_web::{http::StatusCode, test, web, App};
+    use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
         core::{
@@ -15,7 +15,7 @@ mod charge_create_tests {
         },
         presentation::http::routes::charge::{self, CreateChargeInputSchema},
     };
-    use fake::{faker::lorem::en::Word, uuid::UUIDv4, Fake};
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
     use uuid::Uuid;
 
     #[actix_web::test]

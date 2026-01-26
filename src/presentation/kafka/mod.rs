@@ -27,8 +27,15 @@ pub async fn start() -> std::io::Result<()> {
                         ""
                     }
                 };
-                info!("key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-                      m.key(), payload, m.topic(), m.partition(), m.offset(), m.timestamp());
+                info!(
+                    "key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+                    m.key(),
+                    payload,
+                    m.topic(),
+                    m.partition(),
+                    m.offset(),
+                    m.timestamp()
+                );
                 match case::switch_case(m.topic(), payload).await {
                     Ok(result) => info!("{:?}", result),
                     Err(error) => error!("{:?}", error),
