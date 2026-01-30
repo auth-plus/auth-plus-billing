@@ -3,17 +3,18 @@ use uuid::Uuid;
 
 #[mockall::automock]
 #[async_trait::async_trait]
-pub trait CreatingGatewayIntegration {
-    async fn create(
+pub trait UpdatingGatewayIntegration {
+    async fn update(
         &self,
         gateway_id: Uuid,
         user_id: Uuid,
-        gateway_user_id: &str,
-    ) -> Result<GatewayIntegration, CreatingGatewayIntegrationError>;
+        payment_method_id: Uuid,
+        gateway_payment_method_id: &str,
+    ) -> Result<GatewayIntegration, UpdatingGatewayIntegrationError>;
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum CreatingGatewayIntegrationError {
+pub enum UpdatingGatewayIntegrationError {
     UnmappedError,
     DuplicateGatewayIntegration,
     NoGatewayIntegration,

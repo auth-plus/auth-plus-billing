@@ -1,16 +1,22 @@
 use crate::{
     config::{self},
-    core::usecase::driven::gateway::{GatewayIntegration, GatewayIntegrationError},
+    core::{
+        gateway::stripe_models::{CustomerInput, CustomerOutput, StripePaymentMethod},
+        usecase::driven::gateway::{
+            GatewayAPI, GatewayAPIError, GatewayPaymentMethod, GatewayUser,
+        },
+    },
 };
-use anyhow::{Error, anyhow};
 use log::error;
 use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct StripeGateway {
     api_key: String,
     url: String,
+    id: Option<Uuid>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,7 +31,7 @@ async fn charge(
     api_key: &String,
     amount: f32,
     description: &str,
-) -> Result<bool, GatewayIntegrationError> {
+) -> Result<bool, GatewayAPIError> {
     let client = reqwest::Client::new();
     let amount_cents = (amount * 100.0).round() as i64;
     let payload = Intent {
@@ -47,20 +53,14 @@ async fn charge(
             if body.status().is_success() {
                 Ok(true)
             } else {
-                Err(GatewayIntegrationError::ChargeError)
+                Err(GatewayAPIError::ChargeError)
             }
         }
         Err(err) => {
             error!("GatewayIntegration.charge :{:?}", err);
-            Err(GatewayIntegrationError::ChargeError)
+            Err(GatewayAPIError::ChargeError)
         }
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct Customer {
-    name: String,
-    email: String,
 }
 
 async fn create_customer(
@@ -68,9 +68,9 @@ async fn create_customer(
     api_key: &String,
     name: &str,
     email: &str,
-) -> Result<bool, GatewayIntegrationError> {
+) -> Result<GatewayUser, GatewayAPIError> {
     let client = reqwest::Client::new();
-    let payload = Customer {
+    let payload = CustomerInput {
         name: name.into(),
         email: email.into(),
     };
@@ -82,52 +82,32 @@ async fn create_customer(
         .send()
         .await;
 
-    match resp {
-        Ok(body) => {
-            if body.status().is_success() {
-                Ok(true)
+    let body = match resp {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                resp.json::<CustomerOutput>().await
             } else {
                 error!("GatewayIntegration.create_customer: Stripe return not 2XX");
-                Err(GatewayIntegrationError::NotSuccessfulReturn)
+                return Err(GatewayAPIError::NotSuccessfulReturn);
             }
         }
         Err(err) => {
             error!("GatewayIntegration.create_customer :{:?}", err);
-            Err(GatewayIntegrationError::CustomerCreationError)
+            return Err(GatewayAPIError::CustomerCreationError);
         }
-    }
-}
-
-#[derive(Serialize, Debug, Clone, Copy, PartialEq, Deserialize)]
-enum StripePaymentMethod {
-    Boleto,
-    Card,
-    Paypal,
-    Pix,
-    SamsungPay,
-}
-// Implement the Display trait
-impl fmt::Display for StripePaymentMethod {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            StripePaymentMethod::Boleto => write!(f, "boleto"),
-            StripePaymentMethod::Card => write!(f, "card"),
-            StripePaymentMethod::Paypal => write!(f, "paypal"),
-            StripePaymentMethod::Pix => write!(f, "pix"),
-            StripePaymentMethod::SamsungPay => write!(f, "samsung_pay"),
+    };
+    match body {
+        Ok(body) => {
+            let gateway_user: GatewayUser = GatewayUser {
+                id: body.id,
+                name: body.name,
+                email: body.email.unwrap_or_else(|| email.into()),
+            };
+            Ok(gateway_user)
         }
-    }
-}
-impl FromStr for StripePaymentMethod {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "boleto" => Ok(StripePaymentMethod::Boleto),
-            "card" => Ok(StripePaymentMethod::Card),
-            "paypal" => Ok(StripePaymentMethod::Paypal),
-            "pix" => Ok(StripePaymentMethod::Pix),
-            "samsung_pay" => Ok(StripePaymentMethod::SamsungPay),
-            _ => Err(anyhow!("Unknown StripePaymentMethod: {}", s)),
+        Err(err) => {
+            error!("GatewayIntegration.create_customer :{:?}", err);
+            Err(GatewayAPIError::CustomerCreationError)
         }
     }
 }
@@ -141,7 +121,7 @@ async fn create_payment_method(
     host: &String,
     api_key: &String,
     r#type: StripePaymentMethod,
-) -> Result<bool, GatewayIntegrationError> {
+) -> Result<GatewayPaymentMethod, GatewayAPIError> {
     let client = reqwest::Client::new();
     let payload = PaymentMethod {
         r#type: r#type.to_string(),
@@ -153,41 +133,61 @@ async fn create_payment_method(
         .timeout(Duration::from_secs(30))
         .send()
         .await;
-
-    match resp {
-        Ok(body) => {
-            if body.status().is_success() {
-                Ok(true)
+    let body = match resp {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                resp.json::<CustomerOutput>().await
             } else {
-                Err(GatewayIntegrationError::PaymentMethodTransformError)
+                error!("GatewayIntegration.create_payment_method: Stripe return not 2XX");
+                return Err(GatewayAPIError::NotSuccessfulReturn);
             }
         }
         Err(err) => {
             error!("GatewayIntegration.create_payment_method :{:?}", err);
-            Err(GatewayIntegrationError::PaymentMethodTransformError)
+            return Err(GatewayAPIError::CustomerCreationError);
+        }
+    };
+
+    match body {
+        Ok(body) => {
+            let pm = GatewayPaymentMethod { id: body.id };
+            Ok(pm)
+        }
+        Err(err) => {
+            error!("GatewayIntegration.create_payment_method :{:?}", err);
+            Err(GatewayAPIError::CustomerCreationError)
         }
     }
 }
 
 #[async_trait::async_trait]
-impl GatewayIntegration for StripeGateway {
-    async fn charge(
-        &self,
-        amount: f32,
-        description: &str,
-    ) -> Result<bool, GatewayIntegrationError> {
+impl GatewayAPI for StripeGateway {
+    fn set_id(&mut self, id: uuid::Uuid) -> Result<bool, GatewayAPIError> {
+        self.id = Some(id);
+        Ok(true)
+    }
+    fn get_id(&self) -> uuid::Uuid {
+        match self.id {
+            Some(uid) => uid,
+            None => panic!("Trying to get a gateway_id without setting"),
+        }
+    }
+    async fn charge(&self, amount: f32, description: &str) -> Result<bool, GatewayAPIError> {
         charge(&self.url, &self.api_key, amount, description).await
     }
     async fn create_customer(
         &self,
         name: &str,
         email: &str,
-    ) -> Result<bool, GatewayIntegrationError> {
+    ) -> Result<GatewayUser, GatewayAPIError> {
         create_customer(&self.url, &self.api_key, name, email).await
     }
-    async fn create_payment_method(&self, r#type: &str) -> Result<bool, GatewayIntegrationError> {
+    async fn create_payment_method(
+        &self,
+        r#type: &str,
+    ) -> Result<GatewayPaymentMethod, GatewayAPIError> {
         let converted_method = StripePaymentMethod::from_str(r#type)
-            .map_err(|_| GatewayIntegrationError::PaymentMethodTransformError)?;
+            .map_err(|_| GatewayAPIError::PaymentMethodTransformError)?;
         create_payment_method(&self.url, &self.api_key, converted_method).await
     }
 }
@@ -198,6 +198,7 @@ impl StripeGateway {
         StripeGateway {
             api_key: config.gateway.stripe.key,
             url: config.gateway.stripe.url,
+            id: None,
         }
     }
 }

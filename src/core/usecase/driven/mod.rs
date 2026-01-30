@@ -9,4 +9,5 @@ pub mod reading_gateway;
 pub mod reading_invoice;
 pub mod reading_payment_method;
 pub mod reading_user;
+pub mod updating_gateway_integration;
 pub mod updating_invoice;

@@ -2,7 +2,7 @@ mod user_create_tests {
     use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
-        core::{dto::user::User, repository::orm::delete_user},
+        core::{dto::user::User, repository::orm::{delete_gateway_integration, delete_user}},
         presentation::http::routes::user::{self, CreateUserInputSchema},
     };
     use fake::{
@@ -11,6 +11,7 @@ mod user_create_tests {
         uuid::UUIDv4,
     };
     use httpmock::prelude::{MockServer, POST};
+    use serde_json::json;
     use uuid::Uuid;
 
     #[actix_web::test]
@@ -24,7 +25,14 @@ mod user_create_tests {
             when.method(POST).path("/v1/customers");
             then.status(201)
                 .header("content-type", "text/json; charset=UTF-8")
-                .body(r#"{"id": "cus_123"}"#);
+                .json_body(json!({
+                    "id": "cus_123",
+                    "name":  name.clone(),
+                    "email": email.clone(),
+                    "balance": 0,
+                    "created": 123456789,
+                    "livemode": false
+                }));
         });
         let payload = CreateUserInputSchema {
             external_id: external_id.to_string(),

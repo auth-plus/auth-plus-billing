@@ -1,10 +1,13 @@
 use sqlx::{Pool, Postgres, postgres::PgQueryResult};
 use uuid::Uuid;
 
-use crate::core::dto::{
-    charge::ChargeStatus,
-    invoice::InvoiceStatus,
-    payment_method::{Method, PaymentMethodInfo},
+use crate::core::{
+    dto::{
+        charge::ChargeStatus,
+        invoice::InvoiceStatus,
+        payment_method::{Method, PaymentMethodInfo},
+    },
+    gateway::GatewayDAO,
 };
 
 pub async fn create_user(
@@ -70,8 +73,14 @@ pub async fn delete_gateway(
     conn: &Pool<Postgres>,
     gateway_id: Uuid,
 ) -> Result<PgQueryResult, sqlx::Error> {
-    let q_gateway = format!("DELETE FROM gateway WHERE id :: text = '{}';", gateway_id);
+    let q_gateway = format!("DELETE FROM gateway WHERE id::text = '{}';", gateway_id);
     sqlx::query(&q_gateway).execute(conn).await
+}
+
+pub async fn read_main_gateway(conn: &Pool<Postgres>) -> Result<GatewayDAO, sqlx::Error> {
+    sqlx::query_as::<_, GatewayDAO>("SELECT * FROM gateway WHERE name = 'stripe' LIMIT 1;")
+        .fetch_one(conn)
+        .await
 }
 
 pub async fn create_payment_method(
@@ -128,14 +137,14 @@ pub async fn delete_charge(
 
 pub async fn create_gateway_integration(
     conn: &Pool<Postgres>,
-    charge_id: Uuid,
-    invoice_id: Uuid,
-    payment_method_id: Uuid,
-    status: ChargeStatus,
+    id: Uuid,
+    gateway_id: Uuid,
+    user_id: Uuid,
+    gateway_user_id: String,
 ) -> Result<PgQueryResult, sqlx::Error> {
     let q_charge = format!(
-        "INSERT INTO gateway_integration (id, invoice_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}');",
-        charge_id, invoice_id, payment_method_id, status
+        "INSERT INTO gateway_integration (id, gateway_id, user_id, gateway_external_user_id) VALUES ('{}', '{}', '{}', '{}');",
+        id, gateway_id, user_id, gateway_user_id
     );
     sqlx::query(&q_charge).execute(conn).await
 }

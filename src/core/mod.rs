@@ -3,7 +3,7 @@ pub mod gateway;
 pub mod repository;
 pub mod usecase;
 
-use crate::config::database::get_connection;
+use crate::{config::database::get_connection, core::gateway::GatewayMap};
 
 pub struct ChargeUsecase {
     pub create: usecase::charge::charge_create_usecase::ChargeCreateUsecase,
@@ -31,12 +31,13 @@ pub async fn get_core() -> Core {
     let conn = get_connection().await;
 
     // gateways
-    let stripe: gateway::stripe::StripeGateway = gateway::stripe::StripeGateway::new();
+    let stripe = gateway::stripe::StripeGateway::new();
+    let gateway_map = GatewayMap { stripe };
 
     // repositories
-    let charge_repository: repository::charge_repository::ChargeRepository =
-        repository::charge_repository::ChargeRepository::new(conn.clone());
-    let gateway_repository = repository::gateway_repository::GatewayRepository::new(conn.clone());
+    let charge_repository = repository::charge_repository::ChargeRepository::new(conn.clone());
+    let gateway_repository =
+        repository::gateway_repository::GatewayRepository::new(conn.clone(), gateway_map);
     let invoice_repository = repository::invoice_repository::InvoiceRepository::new(conn.clone());
     let invoice_item_repository =
         repository::invoice_item_repository::InvoiceItemRepository::new(conn.clone());
@@ -71,13 +72,14 @@ pub async fn get_core() -> Core {
     let payment_method_create_usecase =
         usecase::payment_method::payment_method_create_usecase::PaymentMethodCreateUsecase {
             reading_user: Box::new(user_repository.clone()),
-            reading_gateway: Box::new(gateway_repository),
+            reading_gateway: Box::new(gateway_repository.clone()),
             creating_payment_method: Box::new(payment_method_repository),
-            creating_gateway_integration: Box::new(gateway_integration_repository),
+            updating_gateway_integration: Box::new(gateway_integration_repository.clone()),
         };
     let user_create_usecase = usecase::user::user_create_usecase::UserCreateUsecase {
         creating_user: Box::new(user_repository),
-        gateway: Box::new(stripe),
+        reading_gateway: Box::new(gateway_repository),
+        creating_gateway_integration: Box::new(gateway_integration_repository),
     };
 
     Core {
