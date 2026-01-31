@@ -25,7 +25,6 @@ mod payment_method_create_tests {
         let conn = get_connection().await;
         let external_id: Uuid = UUIDv4.fake();
         let user_id: Uuid = UUIDv4.fake();
-        let name: String = Name().fake();
         let email: String = FreeEmail().fake();
         let pix_info = PixInfo {
             key: email.clone(),
@@ -34,20 +33,17 @@ mod payment_method_create_tests {
         let info = PaymentMethodInfo::PixInfo(pix_info);
 
         let server = MockServer::start();
-
         let mock_gateway_host = server.mock(|when, then| {
             when.method(POST).path("/v1/payment_methods");
             then.status(201)
                 .header("content-type", "text/json; charset=UTF-8")
                 .json_body(json!({
                     "id": "cus_123",
-                    "name":  name.clone(),
-                    "email": email.clone(),
-                    "balance": 0,
-                    "created": 123456789,
-                    "livemode": false
+                    "livemode": false,
+                    "type":  "Boleto",
                 }));
         });
+
         let gateway = read_main_gateway(&conn)
             .await
             .expect("read_main_gateway: read main gateway went wrong");

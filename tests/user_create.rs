@@ -2,7 +2,10 @@ mod user_create_tests {
     use actix_web::{App, http::StatusCode, test, web};
     use auth_plus_billing::{
         config::database::get_connection,
-        core::{dto::user::User, repository::orm::{delete_gateway_integration, delete_user}},
+        core::{
+            dto::user::User,
+            repository::orm::{delete_gateway_integration, delete_user},
+        },
         presentation::http::routes::user::{self, CreateUserInputSchema},
     };
     use fake::{

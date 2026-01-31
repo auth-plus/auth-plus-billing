@@ -29,10 +29,7 @@ async fn create(
     user_id: Uuid,
     gateway_user_id: &str,
 ) -> Result<GatewayIntegration, CreatingGatewayIntegrationError> {
-    let query_verify = format!(
-        "SELECT * FROM gateway_integration WHERE user_id='{user_id}' AND gateway_id='{gateway_id}'"
-    );
-    let result = sqlx::query_as::<_, GatewayIntegrationDAO>(&query_verify)
+    let result = sqlx::query_as::<_, GatewayIntegrationDAO>("SELECT * FROM gateway_integration WHERE user_id=$1 AND gateway_id=$2").bind(user_id).bind(gateway_id)
         .fetch_all(conn)
         .await
         .expect("GatewayIntegrationRepository::create Something wrong happened when fetching all gateway integration for this use");
@@ -40,10 +37,13 @@ async fn create(
         return Err(CreatingGatewayIntegrationError::DuplicateGatewayIntegration);
     }
     let gateway_integration_id = Uuid::new_v4();
-    let q_gi = format!(
-        "INSERT INTO gateway_integration (id, gateway_id, user_id, gateway_external_user_id) VALUES ('{gateway_integration_id}', '{gateway_id}', '{user_id}', '{gateway_user_id}');"
-    );
-    let result = sqlx::query(&q_gi).execute(conn).await;
+    let result = sqlx::query("INSERT INTO gateway_integration (id, gateway_id, user_id, gateway_external_user_id) VALUES ($1, $2, $3, $4);")
+        .bind(gateway_integration_id)
+        .bind(gateway_id)
+        .bind(user_id)
+        .bind(gateway_user_id)
+        .execute(conn)
+        .await;
     match result {
         Ok(_) => {
             let item = GatewayIntegration {
@@ -69,11 +69,8 @@ async fn update(
     user_id: Uuid,
     gateway_payment_method_id: &str,
 ) -> Result<GatewayIntegration, UpdatingGatewayIntegrationError> {
-    let query_verify = format!(
-        "SELECT * FROM gateway_integration WHERE user_id::text='{user_id}' AND gateway_id::text='{gateway_id}';"
-    );
     let gateway_integration_list: Vec<GatewayIntegrationDAO> =
-        sqlx::query_as::<_, GatewayIntegrationDAO>(&query_verify)
+        sqlx::query_as::<_, GatewayIntegrationDAO>("SELECT * FROM gateway_integration WHERE user_id::text=$1 AND gateway_id::text=$2;").bind(user_id.to_string()).bind(gateway_id.to_string())
             .fetch_all(conn)
             .await
             .expect("GatewayIntegrationRepository::update Something wrong happened when fetching all gateway integration for this use");
@@ -84,11 +81,12 @@ async fn update(
         return Err(UpdatingGatewayIntegrationError::DuplicateGatewayIntegration);
     }
     let gateway_integration_id: Uuid = gateway_integration_list[0].id;
-
-    let q_gi = format!(
-        "UPDATE gateway_integration SET payment_method_id = '{payment_method_id}', gateway_external_payment_method_id = '{gateway_payment_method_id}' WHERE id::text = '{gateway_integration_id}';"
-    );
-    let result = sqlx::query(&q_gi).execute(conn).await;
+    let result = sqlx::query("UPDATE gateway_integration SET payment_method_id=$1, gateway_external_payment_method_id=$2 WHERE id::text=$3;")
+        .bind(payment_method_id)
+        .bind(gateway_payment_method_id)
+        .bind(gateway_integration_id.to_string())
+        .execute(conn)
+        .await;
     match result {
         Ok(_) => {
             let item = GatewayIntegration {

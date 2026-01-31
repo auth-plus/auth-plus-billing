@@ -95,7 +95,6 @@ impl PaymentMethodCreateUsecase {
                 }
             },
         };
-
         let result_gi = self
             .updating_gateway_integration
             .update(gateway.get_id(), user.id, pm.id, &gateway_pm.id)

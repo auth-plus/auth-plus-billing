@@ -1,7 +1,9 @@
 use crate::{
     config::{self},
     core::{
-        gateway::stripe_models::{CustomerInput, CustomerOutput, StripePaymentMethod},
+        gateway::stripe_models::{
+            CustomerInput, CustomerOutput, PaymentMethodOutput, StripePaymentMethod,
+        },
         usecase::driven::gateway::{
             GatewayAPI, GatewayAPIError, GatewayPaymentMethod, GatewayUser,
         },
@@ -136,7 +138,7 @@ async fn create_payment_method(
     let body = match resp {
         Ok(resp) => {
             if resp.status().is_success() {
-                resp.json::<CustomerOutput>().await
+                resp.json::<PaymentMethodOutput>().await
             } else {
                 error!("GatewayIntegration.create_payment_method: Stripe return not 2XX");
                 return Err(GatewayAPIError::NotSuccessfulReturn);
@@ -144,7 +146,7 @@ async fn create_payment_method(
         }
         Err(err) => {
             error!("GatewayIntegration.create_payment_method :{:?}", err);
-            return Err(GatewayAPIError::CustomerCreationError);
+            return Err(GatewayAPIError::PaymentMethodCreationError);
         }
     };
 
@@ -155,7 +157,7 @@ async fn create_payment_method(
         }
         Err(err) => {
             error!("GatewayIntegration.create_payment_method :{:?}", err);
-            Err(GatewayAPIError::CustomerCreationError)
+            Err(GatewayAPIError::PaymentMethodCreationError)
         }
     }
 }

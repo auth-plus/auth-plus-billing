@@ -19,6 +19,7 @@ pub struct Address {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CurrencyCode {
     AED,
     AFN,
@@ -196,8 +197,8 @@ pub struct CustomerOutput {
     pub name: String,
     pub email: Option<String>,
     address: Option<Address>,
-    balance: i32,
-    created: i32,
+    balance: i64,
+    created: i64,
     currency: Option<CurrencyCode>,
     customer_account: Option<String>,
     default_source: Option<String>,
@@ -205,6 +206,14 @@ pub struct CustomerOutput {
     livemode: bool,
     phone: Option<String>,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct PaymentMethodOutput {
+    pub id: String,
+    livemode: bool,
+    r#type: StripePaymentMethod,
+}
+
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Deserialize)]
 pub enum StripePaymentMethod {
     Boleto,

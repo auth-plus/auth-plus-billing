@@ -22,6 +22,7 @@ pub enum GatewayAPIError {
     LoginError,
     ChargeError,
     CustomerCreationError,
+    PaymentMethodCreationError,
     PaymentMethodTransformError,
     NotSuccessfulReturn,
     UnmappedError,

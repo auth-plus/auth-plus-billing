@@ -25,11 +25,14 @@ async fn create(
 ) -> Result<Charge, CreatingChargeError> {
     let charge_id = Uuid::new_v4();
     let status = ChargeStatus::Progress;
-    let q_charge = format!(
-        "INSERT INTO charge (id, invoice_id, external_id, payment_method_id, status) VALUES ('{}', '{}', '{}', '{}', '{}');",
-        charge_id, invoice_id, external_id, payment_method_id, status
-    );
-    let result_charge = sqlx::query(&q_charge).execute(conn).await;
+    let result_charge = sqlx::query("INSERT INTO charge (id, invoice_id, external_id, payment_method_id, status) VALUES ($1, $2, $3, $4, $5);")
+        .bind(charge_id)
+        .bind(invoice_id)
+        .bind(external_id)
+        .bind(payment_method_id)
+        .bind(status.clone().to_string())
+        .execute(conn)
+        .await;
     match result_charge {
         Ok(_) => {
             let item = Charge {
