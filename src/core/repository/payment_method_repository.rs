@@ -29,7 +29,7 @@ async fn get_default_by_user_id(
     user_id: &Uuid,
 ) -> Result<PaymentMethod, ReadingPaymentMethodError> {
     let result = sqlx::query_as::<_, PaymentMethodDAO>(
-        "SELECT * FROM  payment_method WHERE is_default = True AND user_id :: text = $1",
+        "SELECT * FROM  payment_method WHERE is_default = True AND user_id::text = $1",
     )
     .bind(user_id.to_string())
     .fetch_one(conn)
@@ -48,6 +48,7 @@ async fn get_default_by_user_id(
             Ok(item)
         }
         Err(err) => {
+            println!("{}", err);
             error!("PaymentMethodRepository.get_default_by_user_id :{:?}", err);
             Err(ReadingPaymentMethodError::UnmappedError)
         }

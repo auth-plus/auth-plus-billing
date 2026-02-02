@@ -88,7 +88,7 @@ mod test {
         match result {
             Ok(_) => {
                 let q_invoice =
-                    sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  id :: text = $1")
+                    sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  id::text = $1")
                         .bind(invoice_id.to_string())
                         .fetch_one(&conn)
                         .await;
@@ -102,7 +102,7 @@ mod test {
                     }
                 };
                 let q_charge = sqlx::query_as::<_, ChargeDAO>(
-                    "SELECT * FROM charge WHERE invoice_id :: text = $1",
+                    "SELECT * FROM charge WHERE invoice_id::text = $1",
                 )
                 .bind(invoice_id.to_string())
                 .fetch_all(&conn)

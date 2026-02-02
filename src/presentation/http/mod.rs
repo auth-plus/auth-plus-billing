@@ -56,8 +56,8 @@ pub async fn start() -> std::io::Result<()> {
     })
     .workers(4) // Number of worker threads
     .keep_alive(Duration::from_secs(75))
-    .client_request_timeout(Duration::from_secs(5000))
-    .client_disconnect_timeout(Duration::from_secs(5000))
+    .client_request_timeout(Duration::from_millis(5000))
+    .client_disconnect_timeout(Duration::from_millis(5000))
     .bind(("0.0.0.0", config.app.port))?
     .run()
     .await

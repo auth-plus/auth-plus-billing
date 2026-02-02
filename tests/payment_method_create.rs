@@ -59,6 +59,7 @@ mod payment_method_create_tests {
             method: String::from("pix"),
             info,
         };
+        let prev_stripe_base_url = std::env::var("STRIPE_BASE_URL").ok();
         unsafe {
             std::env::set_var("STRIPE_BASE_URL", &server.base_url());
         }
@@ -85,6 +86,12 @@ mod payment_method_create_tests {
         delete_user(&conn, user_id)
             .await
             .expect("should_create_payment_method: user remove went wrong");
+        unsafe {
+            match prev_stripe_base_url {
+                Some(value) => std::env::set_var("STRIPE_BASE_URL", value),
+                None => std::env::remove_var("STRIPE_BASE_URL"),
+            }
+        }
     }
 
     #[actix_web::test]

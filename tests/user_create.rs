@@ -42,7 +42,7 @@ mod user_create_tests {
             name: name.clone(),
             email: email.clone(),
         };
-
+        let prev_stripe_base_url = std::env::var("STRIPE_BASE_URL").ok();
         unsafe {
             std::env::set_var("STRIPE_BASE_URL", &server.base_url());
         }
@@ -63,6 +63,12 @@ mod user_create_tests {
         delete_user(&conn, body.id)
             .await
             .expect("should_list_invoices: user remove went wrong");
+        unsafe {
+            match prev_stripe_base_url {
+                Some(value) => std::env::set_var("STRIPE_BASE_URL", value),
+                None => std::env::remove_var("STRIPE_BASE_URL"),
+            }
+        }
     }
 
     #[actix_web::test]

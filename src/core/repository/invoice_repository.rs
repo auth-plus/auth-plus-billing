@@ -26,11 +26,10 @@ async fn list_by_user_id(
     conn: &PgPool,
     user_id: Uuid,
 ) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-    let result =
-        sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE user_id :: text = $1")
-            .bind(user_id.to_string())
-            .fetch_all(conn)
-            .await;
+    let result = sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE user_id::text = $1")
+        .bind(user_id.to_string())
+        .fetch_all(conn)
+        .await;
     match result {
         Ok(list) => {
             let list_transformed = list
@@ -328,7 +327,7 @@ mod test {
                 assert_eq!(invoice.status.to_string(), String::from("draft"));
 
                 let q_invoice = sqlx::query_as::<_, InvoiceDAO>(
-                    "SELECT * FROM invoice WHERE  user_id :: text = $1",
+                    "SELECT * FROM invoice WHERE  user_id::text = $1",
                 )
                 .bind(user_id.to_string())
                 .fetch_all(&conn)
