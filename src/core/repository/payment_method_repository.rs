@@ -48,7 +48,6 @@ async fn get_default_by_user_id(
             Ok(item)
         }
         Err(err) => {
-            println!("{}", err);
             error!("PaymentMethodRepository.get_default_by_user_id :{:?}", err);
             Err(ReadingPaymentMethodError::UnmappedError)
         }
