@@ -43,11 +43,12 @@ async fn list_by_id(conn: &PgPool, external_id: &Uuid) -> Result<User, ReadingUs
 
 async fn create(conn: &PgPool, external_id: &Uuid) -> Result<User, CreatingUserError> {
     let user_id = Uuid::new_v4();
-    let q_user = format!(
-        "INSERT INTO \"user\" (id, external_id) VALUES ('{}', '{}');",
-        user_id, external_id
-    );
-    let result = sqlx::query(&q_user).execute(conn).await;
+
+    let result = sqlx::query("INSERT INTO \"user\" (id, external_id) VALUES ($1, $2);")
+        .bind(user_id)
+        .bind(external_id)
+        .execute(conn)
+        .await;
     match result {
         Ok(_) => {
             let u = User {

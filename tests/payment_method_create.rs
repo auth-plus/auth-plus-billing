@@ -11,11 +11,7 @@ mod payment_method_create_tests {
         },
         presentation::http::routes::payment_method::{self, CreatePaymentMethodInputSchema},
     };
-    use fake::{
-        Fake,
-        faker::{internet::en::FreeEmail, name::en::Name},
-        uuid::UUIDv4,
-    };
+    use fake::{Fake, faker::internet::en::FreeEmail, uuid::UUIDv4};
     use httpmock::prelude::{MockServer, POST};
     use serde_json::json;
     use uuid::Uuid;
