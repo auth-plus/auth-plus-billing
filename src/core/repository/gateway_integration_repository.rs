@@ -2,6 +2,9 @@ use crate::core::dto::gateway_integration::GatewayIntegration;
 use crate::core::usecase::driven::creating_gateway_integration::{
     CreatingGatewayIntegration, CreatingGatewayIntegrationError,
 };
+use crate::core::usecase::driven::updating_gateway_integration::{
+    UpdatingGatewayIntegration, UpdatingGatewayIntegrationError,
+};
 use log::error;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
@@ -10,24 +13,46 @@ pub struct GatewayIntegrationRepository {
     conn: PgPool,
 }
 
+#[derive(sqlx::FromRow)]
+struct GatewayIntegrationDAO {
+    id: Uuid,
+    // gateway_id: Uuid,
+    // payment_method_id: Option<Uuid>,
+    // user_id: Uuid,
+    gateway_external_user_id: String,
+    // gateway_external_payment_method_id: Option<String>,
+}
+
 async fn create(
     conn: &PgPool,
     gateway_id: Uuid,
-    payment_method_id: Uuid,
+    user_id: Uuid,
+    gateway_user_id: &str,
 ) -> Result<GatewayIntegration, CreatingGatewayIntegrationError> {
+    let result = sqlx::query_as::<_, GatewayIntegrationDAO>("SELECT * FROM gateway_integration WHERE user_id=$1 AND gateway_id=$2").bind(user_id).bind(gateway_id)
+        .fetch_all(conn)
+        .await
+        .expect("GatewayIntegrationRepository::create Something wrong happened when fetching all gateway integration for this use");
+    if !result.is_empty() {
+        return Err(CreatingGatewayIntegrationError::DuplicateGatewayIntegration);
+    }
     let gateway_integration_id = Uuid::new_v4();
-    let q_gi = format!(
-        "INSERT INTO gateway_integration (id, gateway_id, payment_method_id) VALUES ('{}', '{}', '{}');",
-        gateway_integration_id, gateway_id, payment_method_id,
-    );
-    let result = sqlx::query(&q_gi).execute(conn).await;
+    let result = sqlx::query("INSERT INTO gateway_integration (id, gateway_id, user_id, gateway_external_user_id) VALUES ($1, $2, $3, $4);")
+        .bind(gateway_integration_id)
+        .bind(gateway_id)
+        .bind(user_id)
+        .bind(gateway_user_id)
+        .execute(conn)
+        .await;
     match result {
         Ok(_) => {
             let item = GatewayIntegration {
                 id: gateway_integration_id,
-                payment_method_id,
+                payment_method_id: None,
                 gateway_id,
-                gateway_external_id: None,
+                user_id,
+                gateway_user_id: gateway_user_id.into(),
+                gateway_payment_method_id: None,
             };
             Ok(item)
         }
@@ -37,15 +62,81 @@ async fn create(
         }
     }
 }
+async fn update(
+    conn: &PgPool,
+    gateway_id: Uuid,
+    payment_method_id: Uuid,
+    user_id: Uuid,
+    gateway_payment_method_id: &str,
+) -> Result<GatewayIntegration, UpdatingGatewayIntegrationError> {
+    let gateway_integration_list: Vec<GatewayIntegrationDAO> =
+        sqlx::query_as::<_, GatewayIntegrationDAO>("SELECT * FROM gateway_integration WHERE user_id::text=$1 AND gateway_id::text=$2;").bind(user_id.to_string()).bind(gateway_id.to_string())
+            .fetch_all(conn)
+            .await
+            .expect("GatewayIntegrationRepository::update Something wrong happened when fetching all gateway integration for this use");
+    if gateway_integration_list.is_empty() {
+        return Err(UpdatingGatewayIntegrationError::NoGatewayIntegration);
+    }
+    if gateway_integration_list.len() > 1 {
+        return Err(UpdatingGatewayIntegrationError::DuplicateGatewayIntegration);
+    }
+    let gateway_integration_id: Uuid = gateway_integration_list[0].id;
+    let result = sqlx::query("UPDATE gateway_integration SET payment_method_id=$1, gateway_external_payment_method_id=$2 WHERE id::text=$3;")
+        .bind(payment_method_id)
+        .bind(gateway_payment_method_id)
+        .bind(gateway_integration_id.to_string())
+        .execute(conn)
+        .await;
+    match result {
+        Ok(_) => {
+            let item = GatewayIntegration {
+                id: gateway_integration_id,
+                payment_method_id: Some(payment_method_id),
+                gateway_id,
+                user_id,
+                gateway_user_id: gateway_integration_list[0]
+                    .gateway_external_user_id
+                    .to_string(),
+                gateway_payment_method_id: Some(gateway_payment_method_id.to_string()),
+            };
+            Ok(item)
+        }
+        Err(err) => {
+            error!("GatewayIntegration.create :{:?}", err);
+            Err(UpdatingGatewayIntegrationError::UnmappedError)
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl CreatingGatewayIntegration for GatewayIntegrationRepository {
     async fn create(
         &self,
         gateway_id: Uuid,
-        payment_method_id: Uuid,
+        user_id: Uuid,
+        gateway_user_id: &str,
     ) -> Result<GatewayIntegration, CreatingGatewayIntegrationError> {
-        create(&self.conn, gateway_id, payment_method_id).await
+        create(&self.conn, gateway_id, user_id, gateway_user_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl UpdatingGatewayIntegration for GatewayIntegrationRepository {
+    async fn update(
+        &self,
+        gateway_id: Uuid,
+        user_id: Uuid,
+        payment_method_id: Uuid,
+        gateway_payment_method_id: &str,
+    ) -> Result<GatewayIntegration, UpdatingGatewayIntegrationError> {
+        update(
+            &self.conn,
+            gateway_id,
+            payment_method_id,
+            user_id,
+            gateway_payment_method_id,
+        )
+        .await
     }
 }
 
@@ -84,7 +175,7 @@ mod test {
             external_id: String::from("ABCDEFG"),
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
-        let payment_method_id: Uuid = UUIDv4.fake();
+        let external_user_id: Uuid = UUIDv4.fake();
 
         let method = Method::Pix;
         create_user(&conn, user_id, external_id)
@@ -93,15 +184,22 @@ mod test {
         create_gateway(&conn, gateway_id, &gateway_name, 1)
             .await
             .expect("should_create_payment_integration: gateway setup went wrong");
-        create_payment_method(&conn, payment_method_id, user_id, true, method, info)
+        create_payment_method(&conn, external_user_id, user_id, true, method, info)
             .await
             .expect("should_create_payment_integration: payment_method setup went wrong");
-        let result = create(&conn, gateway_id, payment_method_id).await;
+        let result = create(
+            &conn,
+            gateway_id,
+            user_id,
+            &external_user_id.clone().to_string(),
+        )
+        .await;
 
         match result {
             Ok(gi) => {
                 assert!(!gi.id.to_string().is_empty());
-                assert_eq!(gi.payment_method_id, payment_method_id);
+                assert_eq!(gi.gateway_user_id, external_user_id.to_string());
+                assert_eq!(gi.user_id, user_id);
                 assert_eq!(gi.gateway_id, gateway_id);
                 delete_gateway_integration(&conn, gi.id).await.expect(
                     "should_create_payment_integration: gateway_integration remove went wrong",
@@ -113,7 +211,7 @@ mod test {
             ),
         };
 
-        delete_payment_method(&conn, payment_method_id)
+        delete_payment_method(&conn, external_user_id)
             .await
             .expect("should_create_payment_integration: payment_method remove went wrong");
         delete_gateway(&conn, gateway_id)

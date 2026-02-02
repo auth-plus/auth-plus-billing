@@ -11,6 +11,7 @@ mod user_create_tests {
         uuid::UUIDv4,
     };
     use httpmock::prelude::{MockServer, POST};
+    use serde_json::json;
     use uuid::Uuid;
 
     #[actix_web::test]
@@ -24,14 +25,21 @@ mod user_create_tests {
             when.method(POST).path("/v1/customers");
             then.status(201)
                 .header("content-type", "text/json; charset=UTF-8")
-                .body(r#"{"id": "cus_123"}"#);
+                .json_body(json!({
+                    "id": "cus_123",
+                    "name":  name.clone(),
+                    "email": email.clone(),
+                    "balance": 0,
+                    "created": 123456789,
+                    "livemode": false
+                }));
         });
         let payload = CreateUserInputSchema {
             external_id: external_id.to_string(),
             name: name.clone(),
             email: email.clone(),
         };
-
+        let prev_stripe_base_url = std::env::var("STRIPE_BASE_URL").ok();
         unsafe {
             std::env::set_var("STRIPE_BASE_URL", &server.base_url());
         }
@@ -52,6 +60,12 @@ mod user_create_tests {
         delete_user(&conn, body.id)
             .await
             .expect("should_list_invoices: user remove went wrong");
+        unsafe {
+            match prev_stripe_base_url {
+                Some(value) => std::env::set_var("STRIPE_BASE_URL", value),
+                None => std::env::remove_var("STRIPE_BASE_URL"),
+            }
+        }
     }
 
     #[actix_web::test]

@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       target: dependency
     ports:
-      - '5002:5002'
+      - "5002:5002"
     command: tail -f /dev/null
     environment:
       APP_NAME: auth-plus-billing
@@ -31,9 +31,17 @@ services:
       POSTGRES_USER: root
       POSTGRES_DB: billing
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - v-database:/var/lib/postgres
+    networks:
+      - billing-net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    command: redis-server --appendonly yes
     networks:
       - billing-net
 

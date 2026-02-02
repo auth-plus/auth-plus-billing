@@ -4,6 +4,7 @@ use crate::core::usecase::driven::creating_invoice_item::{
 };
 use log::error;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 pub use sqlx::postgres::PgPool;
 use uuid::Uuid;
 
@@ -27,11 +28,7 @@ async fn insert_item(
     item: &InvoiceItem,
 ) -> Result<InvoiceItem, CreatingInvoiceItemError> {
     let item_id = Uuid::new_v4();
-    let q_invoice_item = format!(
-        "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
-        item_id, invoice_id, item.description, item.quantity, item.amount, item.currency
-    );
-    match sqlx::query(&q_invoice_item).execute(conn).await {
+    match sqlx::query("INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ($1, $2, $3, $4, $5, $6);").bind(item_id).bind(invoice_id).bind(item.description.clone()).bind(item.quantity.to_i32()).bind(item.amount.to_i32()).bind(item.currency.clone()).execute(conn).await {
         Ok(_) => (),
         Err(error) => {
             error!("InvoiceRepository.insert_item :{:?}", error);

@@ -4,6 +4,7 @@ use crate::core::usecase::driven::creating_invoice::{CreatingInvoice, CreatingIn
 use crate::core::usecase::driven::reading_invoice::{ReadingInvoice, ReadingInvoiceError};
 use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingInvoiceError};
 use log::error;
+use rust_decimal::prelude::ToPrimitive;
 pub use sqlx::postgres::PgPool;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -25,11 +26,10 @@ async fn list_by_user_id(
     conn: &PgPool,
     user_id: Uuid,
 ) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-    let result =
-        sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE user_id :: text = $1")
-            .bind(user_id.to_string())
-            .fetch_all(conn)
-            .await;
+    let result = sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE user_id::text = $1")
+        .bind(user_id.to_string())
+        .fetch_all(conn)
+        .await;
     match result {
         Ok(list) => {
             let list_transformed = list
@@ -57,11 +57,14 @@ async fn create(
 ) -> Result<Invoice, CreatingInvoiceError> {
     let invoice_id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
-    let q_invoice = format!(
-        "INSERT INTO invoice (id, user_id, status, created_at) VALUES ('{}','{}', 'draft', '{}');",
-        invoice_id, user_id, now
-    );
-    let r_invoice = sqlx::query(&q_invoice).execute(conn).await;
+    let r_invoice = sqlx::query(
+        "INSERT INTO invoice (id, user_id, status, created_at) VALUES ($1, $2, 'draft', $3);",
+    )
+    .bind(invoice_id)
+    .bind(user_id)
+    .bind(now)
+    .execute(conn)
+    .await;
     match r_invoice {
         Ok(_) => {}
         Err(error) => {
@@ -72,11 +75,15 @@ async fn create(
     let mut insert_iten: Vec<Uuid> = Vec::new();
     for it in itens {
         let item_id = Uuid::new_v4();
-        let q_invoice_item = format!(
-            "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ('{}','{}', '{}', '{}', '{}', '{}');",
-            item_id, invoice_id, it.description, it.quantity, it.amount, it.currency
-        );
-        let r_invoice_item = sqlx::query(&q_invoice_item).execute(conn).await;
+        let r_invoice_item = sqlx::query("INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ($1, $2, $3, $4, $5, $6);")
+            .bind(item_id)
+            .bind(invoice_id)
+            .bind(it.description.clone())
+            .bind(it.quantity.to_i32())
+            .bind(it.amount.to_i32())
+            .bind(it.currency.clone())
+            .execute(conn)
+            .await;
         match r_invoice_item {
             Ok(_) => insert_iten.push(item_id),
             Err(error) => {
@@ -95,7 +102,7 @@ async fn create(
 }
 
 async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingInvoiceError> {
-    let result = sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  id :: text = $1")
+    let result = sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE  id::text = $1")
         .bind(invoice_id.to_string())
         .fetch_one(conn)
         .await;
@@ -118,14 +125,12 @@ async fn get_by_id(conn: &PgPool, invoice_id: Uuid) -> Result<Invoice, ReadingIn
 }
 
 async fn list_all_should_be_charged(conn: &PgPool) -> Result<Vec<Invoice>, ReadingInvoiceError> {
-    let q_invoice = format!(
-        "SELECT * FROM invoice WHERE status = '{}' OR status = '{}'",
-        InvoiceStatus::ChargedWithError,
-        InvoiceStatus::Pending,
-    );
-    let result = sqlx::query_as::<_, InvoiceDAO>(&q_invoice)
-        .fetch_all(conn)
-        .await;
+    let result =
+        sqlx::query_as::<_, InvoiceDAO>("SELECT * FROM invoice WHERE status = $1 OR status = $2;")
+            .bind(InvoiceStatus::ChargedWithError.to_string())
+            .bind(InvoiceStatus::Pending.to_string())
+            .fetch_all(conn)
+            .await;
     match result {
         Ok(list) => {
             let mapped_list = list
@@ -151,11 +156,9 @@ async fn update(
     invoice_id: Uuid,
     status: InvoiceStatus,
 ) -> Result<Invoice, UpdatingInvoiceError> {
-    let q_invoice = format!(
-        "UPDATE invoice SET status = '{}' WHERE id :: text = '{}' RETURNING id, user_id, status, created_at;",
-        status, invoice_id,
-    );
-    let result_invoice = sqlx::query_as::<_, InvoiceDAO>(&q_invoice)
+    let result_invoice = sqlx::query_as::<_, InvoiceDAO>("UPDATE invoice SET status = $1 WHERE id::text = $2 RETURNING id, user_id, status, created_at;")
+        .bind(status.to_string())
+        .bind(invoice_id.to_string())
         .fetch_one(conn)
         .await;
     match result_invoice {
@@ -324,7 +327,7 @@ mod test {
                 assert_eq!(invoice.status.to_string(), String::from("draft"));
 
                 let q_invoice = sqlx::query_as::<_, InvoiceDAO>(
-                    "SELECT * FROM invoice WHERE  user_id :: text = $1",
+                    "SELECT * FROM invoice WHERE  user_id::text = $1",
                 )
                 .bind(user_id.to_string())
                 .fetch_all(&conn)

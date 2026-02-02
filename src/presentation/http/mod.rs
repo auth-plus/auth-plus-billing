@@ -1,5 +1,7 @@
 pub mod routes;
 
+use std::time::Duration;
+
 use crate::config::{
     self,
     prometheus::{C_HTTP_FAIL, C_HTTP_SUCCESS, Prometheus},
@@ -52,6 +54,10 @@ pub async fn start() -> std::io::Result<()> {
             .service(payment_method::create_payment_method)
             .service(user::create_user)
     })
+    .workers(4) // Number of worker threads
+    .keep_alive(Duration::from_secs(75))
+    .client_request_timeout(Duration::from_millis(5000))
+    .client_disconnect_timeout(Duration::from_millis(5000))
     .bind(("0.0.0.0", config.app.port))?
     .run()
     .await
