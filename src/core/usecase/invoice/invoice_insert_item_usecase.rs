@@ -80,7 +80,18 @@ impl InvoiceInsertItemUsecase {
                     .create(&user.id, itens, idempotency_key)
                     .await;
                 match result_invoice {
-                    Ok(invoice) => Ok(InvoiceInsertItemResponse::Invoice(invoice)),
+                    Ok(invoice) => {
+                        let cache_value = serde_json::to_string(
+                            &InvoiceInsertItemResponse::Invoice(invoice.clone()),
+                        )
+                        .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
+                        if let Err(e) = cache_client
+                            .set::<_, _, ()>(format!("create_invoice:{}", idempotency_key), cache_value)
+                        {
+                            error!("create_invoice error when setting into cache: {:?}", e);
+                        }
+                        Ok(InvoiceInsertItemResponse::Invoice(invoice))
+                    }
                     Err(error) => match error {
                         CreatingInvoiceError::InvoiceNotFoundError => {
                             Err(String::from("Invoice Not found"))
