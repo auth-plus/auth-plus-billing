@@ -43,10 +43,10 @@ impl InvoiceInsertItemUsecase {
         let mut cache_client = cache::get_connection();
         let idempotency: Option<String> = cache_client
             .get(format!("create_invoice:{}", idempotency_key))
-            .expect("error fetching create_invoice cache");
+            .map_err(|e| format!("error fetching create_invoice cache: {}", e))?;
         if let Some(value) = idempotency {
-            let v: InvoiceInsertItemResponse =
-                serde_json::from_str(&value).expect("create_invoice error when parsing from cache");
+            let v: InvoiceInsertItemResponse = serde_json::from_str(&value)
+                .map_err(|e| format!("create_invoice error when parsing from cache: {}", e))?;
             return Ok(v);
         };
         let result_user = self.reading_user.list_by_id(&user_id).await;
@@ -109,7 +109,7 @@ impl InvoiceInsertItemUsecase {
                 }
                 let cache_value =
                     serde_json::to_string(&InvoiceInsertItemResponse::Item(item_list.clone()))
-                        .expect("Failed to serialize");
+                        .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
                 let set_idempotency: Result<(), redis::RedisError> =
                     cache_client.set(format!("create_invoice:{}", idempotency_key), cache_value);
                 if set_idempotency.is_err() {
