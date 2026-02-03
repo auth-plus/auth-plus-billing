@@ -1,8 +1,8 @@
 -- migrate:up
 ALTER TABLE gateway
-ADD COLUMN "deleted_at" timestamptz DEFAULT NULL;
+ADD COLUMN "deleted_at" TIMESTAMPTZ DEFAULT NULL;
 ALTER TABLE gateway
-ADD COLUMN "priority" integer NOT NULL;
+ADD COLUMN "priority" INTEGER NOT NULL;
 INSERT INTO gateway ("name", "priority")
 VALUES ('stripe', 0);
 -- migrate:down

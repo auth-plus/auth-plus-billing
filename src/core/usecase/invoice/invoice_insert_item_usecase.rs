@@ -1,6 +1,4 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
+use crate::config::cache;
 use crate::core::{
     dto::{
         invoice::{Invoice, InvoiceStatus},
@@ -13,6 +11,10 @@ use crate::core::{
         reading_user::{ReadingUser, ReadingUserError},
     },
 };
+use log::error;
+use redis::Commands;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub struct InvoiceInsertItemUsecase {
     pub reading_user: Box<dyn ReadingUser>,
@@ -32,10 +34,20 @@ impl InvoiceInsertItemUsecase {
         &self,
         external_user_id: &str,
         itens: &[InvoiceItem],
+        idempotency_key: &str,
     ) -> Result<InvoiceInsertItemResponse, String> {
         let user_id = match Uuid::parse_str(external_user_id) {
             Ok(id) => id,
             Err(_error) => return Err(String::from("external id provided isn't uuid")),
+        };
+        let mut cache_client = cache::get_connection();
+        let idempotency: Option<String> = cache_client
+            .get(format!("create_invoice:{}", idempotency_key))
+            .map_err(|e| format!("error fetching create_invoice cache: {}", e))?;
+        if let Some(value) = idempotency {
+            let v: InvoiceInsertItemResponse = serde_json::from_str(&value)
+                .map_err(|e| format!("create_invoice error when parsing from cache: {}", e))?;
+            return Ok(v);
         };
         let result_user = self.reading_user.list_by_id(&user_id).await;
         let user = match result_user {
@@ -63,9 +75,23 @@ impl InvoiceInsertItemUsecase {
 
         match does_exist {
             None => {
-                let result_invoice = self.creating_invoice.create(&user.id, itens).await;
+                let result_invoice = self
+                    .creating_invoice
+                    .create(&user.id, itens, idempotency_key)
+                    .await;
                 match result_invoice {
-                    Ok(invoice) => Ok(InvoiceInsertItemResponse::Invoice(invoice)),
+                    Ok(invoice) => {
+                        let cache_value = serde_json::to_string(
+                            &InvoiceInsertItemResponse::Invoice(invoice.clone()),
+                        )
+                        .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
+                        if let Err(e) = cache_client
+                            .set::<_, _, ()>(format!("create_invoice:{}", idempotency_key), cache_value)
+                        {
+                            error!("create_invoice error when setting into cache: {:?}", e);
+                        }
+                        Ok(InvoiceInsertItemResponse::Invoice(invoice))
+                    }
                     Err(error) => match error {
                         CreatingInvoiceError::InvoiceNotFoundError => {
                             Err(String::from("Invoice Not found"))
@@ -91,6 +117,14 @@ impl InvoiceInsertItemUsecase {
                             ));
                         }
                     }
+                }
+                let cache_value =
+                    serde_json::to_string(&InvoiceInsertItemResponse::Item(item_list.clone()))
+                        .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
+                let set_idempotency: Result<(), redis::RedisError> =
+                    cache_client.set(format!("create_invoice:{}", idempotency_key), cache_value);
+                if set_idempotency.is_err() {
+                    error!("create_invoice error when setting into cache");
                 }
                 Ok(InvoiceInsertItemResponse::Item(item_list))
             }
@@ -127,6 +161,7 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let external_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
+        let long_hash: String = (64..65).fake();
         let user = User {
             id: user_id,
             external_id,
@@ -164,7 +199,11 @@ mod test {
         let mut mock_ci = MockCreatingInvoice::new();
         mock_ci
             .expect_create()
-            .with(predicate::eq(user_id), predicate::always())
+            .with(
+                predicate::eq(user_id),
+                predicate::always(),
+                predicate::eq(long_hash.clone()),
+            )
             .times(1)
             .return_const(Ok(invoice.clone()));
         let mut mock_cii = MockCreatingInvoiceItem::new();
@@ -176,7 +215,7 @@ mod test {
             creating_invoice_item: Box::new(mock_cii),
         };
         let result = invoice_usecase
-            .create_invoice(external_id.to_string().as_str(), &itens)
+            .create_invoice(external_id.to_string().as_str(), &itens, &long_hash)
             .await;
 
         match result {
@@ -207,6 +246,7 @@ mod test {
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";
+        let long_hash: String = (64..65).fake();
         let item = InvoiceItem {
             id: None,
             amount: Decimal::from_f32_retain(amount).unwrap(),
@@ -248,7 +288,7 @@ mod test {
             creating_invoice_item: Box::new(mock_cii),
         };
         let result = invoice_usecase
-            .create_invoice(external_id.to_string().as_str(), &itens)
+            .create_invoice(external_id.to_string().as_str(), &itens, &long_hash)
             .await;
 
         match result {

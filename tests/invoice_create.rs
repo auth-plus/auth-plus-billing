@@ -22,6 +22,7 @@ mod invoice_create_tests {
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";
+        let long_hash: String = (64..65).fake();
         let item = InvoiceItem {
             id: None,
             amount: Decimal::from_f32_retain(amount).unwrap(),
@@ -33,6 +34,7 @@ mod invoice_create_tests {
         let payload = CreateInvoiceInputSchema {
             external_user_id: external_id.to_string(),
             itens,
+            idempotency_key: long_hash,
         };
         create_user(&conn, user_id, external_id)
             .await
@@ -66,6 +68,7 @@ mod invoice_create_tests {
         let amount = Faker.fake::<f32>();
         let description: String = Sentence(3..5).fake();
         let currency = "BRL";
+        let long_hash: String = (64..65).fake();
         let item = InvoiceItem {
             id: None,
             amount: Decimal::from_f32_retain(amount).unwrap(),
@@ -77,6 +80,7 @@ mod invoice_create_tests {
         let payload = CreateInvoiceInputSchema {
             external_user_id: external_id.to_string(),
             itens,
+            idempotency_key: long_hash,
         };
         let app = test::init_service(App::new().service(invoice::create_invoice)).await;
         let req = test::TestRequest::post()

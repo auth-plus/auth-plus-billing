@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS invoice_item (
     "invoice_id" UUID NOT NULL,
     "description" TEXT NOT NULL,
     "quantity" INT NOT NULL,
-    "amount" REAL NOT NULL,
-    "currency" TEXT NOT NULL,
+    "amount" DECIMAL(10,2) NOT NULL,
+    "currency" VARCHAR(3) NOT NULL,
     CONSTRAINT pk_ii_id PRIMARY KEY (id),
     CONSTRAINT fk_ii_invoice_id FOREIGN KEY("invoice_id") REFERENCES invoice("id") ON DELETE CASCADE
 );

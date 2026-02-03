@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct CreateInvoiceInputSchema {
     pub external_user_id: String,
     pub itens: Vec<InvoiceItem>,
+    pub idempotency_key: String,
 }
 
 #[post("/invoice")]
@@ -14,7 +15,7 @@ pub async fn create_invoice(json: web::Json<CreateInvoiceInputSchema>) -> impl R
     let result = core_x
         .invoice
         .create
-        .create_invoice(&json.external_user_id, &json.itens)
+        .create_invoice(&json.external_user_id, &json.itens, &json.idempotency_key)
         .await;
     match result {
         Ok(invoice) => {
