@@ -14,6 +14,7 @@ services:
       DATABASE_URL: postgres://root:db_password@database:5432/billing
       KAFKA_HOST: kafka:9092
       STRIPE_KEY: test-key
+      REDIS_HOST: cache
     volumes:
       - .:/app
     restart: always
@@ -21,6 +22,7 @@ services:
       - billing-net
     depends_on:
       - database
+      - cache
 
   database:
     container_name: postgres
@@ -37,7 +39,7 @@ services:
     networks:
       - billing-net
 
-  redis:
+  cache:
     image: redis:7-alpine
     ports:
       - '6379:6379'

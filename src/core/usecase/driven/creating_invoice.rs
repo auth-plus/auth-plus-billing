@@ -8,6 +8,7 @@ pub trait CreatingInvoice {
         &self,
         user_id: &Uuid,
         itens: &[InvoiceItem],
+        idempotency_key: &str,
     ) -> Result<Invoice, CreatingInvoiceError>;
 }
 

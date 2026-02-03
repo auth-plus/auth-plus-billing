@@ -63,6 +63,7 @@ opentelemetry_sdk = "0.31.0"
 reqwest = { version = "0.13.1", features = ["json"] }
 anyhow = "1.0.100"
 httpmock = "0.8.2"
+redis = { version = "1.0.3", features = ["json"] }
 
 [dev-dependencies]
 actix-rt = "2.10"

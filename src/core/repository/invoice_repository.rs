@@ -54,14 +54,16 @@ async fn create(
     conn: &PgPool,
     user_id: &Uuid,
     itens: &[InvoiceItem],
+    idempotency_key: &str,
 ) -> Result<Invoice, CreatingInvoiceError> {
     let invoice_id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
     let r_invoice = sqlx::query(
-        "INSERT INTO invoice (id, user_id, status, created_at) VALUES ($1, $2, 'draft', $3);",
+        "INSERT INTO invoice (id, user_id, status, idempotency_key, created_at) VALUES ($1, $2, 'draft', $3, $4);",
     )
     .bind(invoice_id)
     .bind(user_id)
+    .bind(idempotency_key)
     .bind(now)
     .execute(conn)
     .await;
@@ -197,8 +199,9 @@ impl CreatingInvoice for InvoiceRepository {
         &self,
         user_id: &Uuid,
         itens: &[InvoiceItem],
+        idempotency_key: &str,
     ) -> Result<Invoice, CreatingInvoiceError> {
-        create(&self.conn, user_id, itens).await
+        create(&self.conn, user_id, itens, idempotency_key).await
     }
 }
 
@@ -306,6 +309,7 @@ mod test {
         let quantity = Faker.fake::<u16>();
         let amount = Faker.fake::<f32>();
         let currency = "BRL";
+        let long_hash: String = (64..65).fake();
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_invoices: user setup went wrong");
@@ -318,7 +322,7 @@ mod test {
         };
         let itens = Vec::from([item]);
 
-        let result = create(&conn, &user_id, &itens).await;
+        let result = create(&conn, &user_id, &itens, &long_hash).await;
 
         match result {
             Ok(invoice) => {

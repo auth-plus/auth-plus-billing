@@ -11,7 +11,10 @@ pub struct App {
 pub struct Database {
     pub url: String,
 }
-
+#[derive(Clone)]
+pub struct Cache {
+    pub url: String,
+}
 #[derive(Clone)]
 pub struct Kafka {
     pub url: String,
@@ -33,6 +36,7 @@ pub struct Config {
     pub app: App,
     pub database: Database,
     pub kafka: Kafka,
+    pub cache: Cache,
     pub gateway: Gateway,
 }
 
@@ -48,6 +52,9 @@ pub fn get_config() -> Config {
     };
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
     let database = Database { url: db_url };
+    let cache = Cache {
+        url: env::var("REDIS_HOST").expect("REDIS_HOST is not set"),
+    };
     let kafka = Kafka {
         url: env::var("KAFKA_HOST").expect("KAFKA_HOST is not set"),
     };
@@ -62,6 +69,7 @@ pub fn get_config() -> Config {
         app,
         database,
         kafka,
+        cache,
         gateway,
     }
 }

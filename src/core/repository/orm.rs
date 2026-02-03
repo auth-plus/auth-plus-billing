@@ -1,3 +1,4 @@
+use fake::Fake;
 use sqlx::{Pool, Postgres, postgres::PgQueryResult};
 use uuid::Uuid;
 
@@ -38,12 +39,16 @@ pub async fn create_invoice(
     user_id: Uuid,
     status: InvoiceStatus,
 ) -> Result<PgQueryResult, sqlx::Error> {
-    sqlx::query("INSERT INTO invoice (id, user_id, status) VALUES ($1, $2, $3);")
-        .bind(invoice_id)
-        .bind(user_id)
-        .bind(status.to_string())
-        .execute(conn)
-        .await
+    let idempotency_key: String = (64..65).fake();
+    sqlx::query(
+        "INSERT INTO invoice (id, user_id, status, idempotency_key) VALUES ($1, $2, $3, $4);",
+    )
+    .bind(invoice_id)
+    .bind(user_id)
+    .bind(status.to_string())
+    .bind(idempotency_key)
+    .execute(conn)
+    .await
 }
 
 pub async fn delete_invoice(

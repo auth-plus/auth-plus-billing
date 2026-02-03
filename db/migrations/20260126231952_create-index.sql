@@ -7,8 +7,8 @@ CREATE INDEX idx_charge_payment_method_id ON charge(payment_method_id);
 CREATE INDEX idx_gateway_integration_gateway_id ON gateway_integration(gateway_id);
 CREATE INDEX idx_gateway_integration_payment_method_id ON gateway_integration(payment_method_id);
 
-CREATE INDEX idx_invoice_status ON invoice(status);
-CREATE INDEX idx_charge_status ON charge(status);
+CREATE INDEX idx_invoice_status ON invoice("status");
+CREATE INDEX idx_charge_status ON charge("status");
 
 CREATE INDEX idx_invoice_created_at ON invoice(created_at);
 CREATE INDEX idx_charge_created_at ON charge(created_at);
