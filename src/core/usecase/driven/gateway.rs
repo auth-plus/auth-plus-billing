@@ -5,7 +5,11 @@ use serde::{Deserialize, Serialize};
 pub trait GatewayAPI {
     fn set_id(&mut self, id: uuid::Uuid) -> Result<bool, GatewayAPIError>;
     fn get_id(&self) -> uuid::Uuid;
-    async fn charge(&self, amount: f32, description: &str) -> Result<bool, GatewayAPIError>;
+    async fn charge(
+        &self,
+        amount: rust_decimal::Decimal,
+        description: &str,
+    ) -> Result<GatewayCharge, GatewayAPIError>;
     async fn create_customer(
         &self,
         name: &str,
@@ -38,4 +42,11 @@ pub struct GatewayUser {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GatewayPaymentMethod {
     pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct GatewayCharge {
+    pub id: String,
+    pub amount: f32,
+    pub currency: String,
 }

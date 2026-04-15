@@ -85,9 +85,10 @@ impl InvoiceInsertItemUsecase {
                             &InvoiceInsertItemResponse::Invoice(invoice.clone()),
                         )
                         .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
-                        if let Err(e) = cache_client
-                            .set::<_, _, ()>(format!("create_invoice:{}", idempotency_key), cache_value)
-                        {
+                        if let Err(e) = cache_client.set::<_, _, ()>(
+                            format!("create_invoice:{}", idempotency_key),
+                            cache_value,
+                        ) {
                             error!("create_invoice error when setting into cache: {:?}", e);
                         }
                         Ok(InvoiceInsertItemResponse::Invoice(invoice))

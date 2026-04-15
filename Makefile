@@ -5,7 +5,7 @@ infra/up:
 
 .PHONY: infra/down
 infra/down:
-	docker compose down
+	docker compose down -v
 
 .PHONY: dev
 dev:
@@ -16,18 +16,8 @@ dev:
 test:
 	make infra/up
 	docker compose exec -T api cargo build
-	docker compose exec -T api cargo test
+	docker compose exec -T api cargo test -- --test-threads=1
 	make clean/docker
-
-.PHONY: clean/docker
-clean/docker:
-	make infra/down
-	docker container prune -f
-	docker volume prune -f
-	docker image prune -f
-	docker network prune -f
-	rm -rf db/schema.sql
-	rm -f db/schema.sql
 
 .PHONY: migration/up
 migration/up:

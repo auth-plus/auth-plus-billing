@@ -247,3 +247,10 @@ impl FromStr for StripePaymentMethod {
         }
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct IntentOutput {
+    pub id: String,
+    pub amount: String,
+    pub currency: String,
+}

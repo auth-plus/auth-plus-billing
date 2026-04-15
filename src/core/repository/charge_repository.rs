@@ -21,7 +21,7 @@ async fn create(
     conn: &PgPool,
     invoice_id: Uuid,
     payment_method_id: Uuid,
-    external_id: String,
+    external_id: &str,
 ) -> Result<Charge, CreatingChargeError> {
     let charge_id = Uuid::new_v4();
     let status = ChargeStatus::Progress;
@@ -56,8 +56,8 @@ impl CreatingCharge for ChargeRepository {
         &self,
         invoice_id: Uuid,
         payment_method_id: Uuid,
+        external_id: &str,
     ) -> Result<Charge, CreatingChargeError> {
-        let external_id = String::from("GET THIS FROM GATEWAY");
         create(&self.conn, invoice_id, payment_method_id, external_id).await
     }
 }
@@ -120,7 +120,7 @@ mod test {
             .await
             .expect("should_create_charge: payment_method setup went wrong");
 
-        let result = create(&conn, invoice_id, payment_method_id, invoice_external_id).await;
+        let result = create(&conn, invoice_id, payment_method_id, &invoice_external_id).await;
 
         match result {
             Ok(charge) => {

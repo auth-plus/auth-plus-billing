@@ -56,4 +56,5 @@ pub struct PaymentMethod {
     pub is_default: bool,
     pub method: Method,
     pub info: PaymentMethodInfo,
+    pub created_at: i128,
 }

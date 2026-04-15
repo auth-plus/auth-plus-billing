@@ -10,13 +10,14 @@ pub use sqlx::postgres::PgPool;
 use sqlx::types::Json;
 use uuid::Uuid;
 
-#[derive(sqlx::FromRow)]
+#[derive(Debug)]
 struct PaymentMethodDAO {
     id: Uuid,
     user_id: Uuid,
     is_default: bool,
     method: String,
     info: sqlx::types::Json<PaymentMethodInfo>,
+    created_at: time::OffsetDateTime,
 }
 
 #[derive(Clone)]
@@ -28,10 +29,25 @@ async fn get_default_by_user_id(
     conn: &PgPool,
     user_id: &Uuid,
 ) -> Result<PaymentMethod, ReadingPaymentMethodError> {
-    let result = sqlx::query_as::<_, PaymentMethodDAO>(
-        "SELECT * FROM  payment_method WHERE is_default = True AND user_id::text = $1",
+    let result = sqlx::query_as!(
+        PaymentMethodDAO,
+        r#"
+            SELECT
+                id,
+                user_id,
+                is_default,
+                method,
+                info as "info: sqlx::types::Json<PaymentMethodInfo>",
+                created_at
+            FROM
+                payment_method
+            WHERE
+                is_default = true
+                and user_id = $1
+        "#,
+        user_id
     )
-    .bind(user_id.to_string())
+    // .bind(user_id.to_string())
     .fetch_one(conn)
     .await;
 
@@ -44,6 +60,7 @@ async fn get_default_by_user_id(
                 is_default: pm.is_default,
                 method: Method::from(pm.method.as_str()),
                 info,
+                created_at: pm.created_at.unix_timestamp_nanos() / 1_000_000,
             };
             Ok(item)
         }
@@ -62,16 +79,37 @@ async fn create(
     info: &PaymentMethodInfo,
 ) -> Result<PaymentMethod, CreatingPaymentMethodError> {
     let payment_method_id = Uuid::new_v4();
-    let inser_info = Json(info);
-    let result = sqlx::query("INSERT INTO payment_method (id, user_id, is_default, method, info) VALUES ($1,$2,$3,$4,$5)").bind(payment_method_id).bind(user_id).bind(is_default).bind(method.to_string()).bind(inser_info).execute(conn).await;
+    let inser_info =
+        serde_json::to_value(info).map_err(|_| CreatingPaymentMethodError::UnmappedError)?;
+    let result = sqlx::query!(
+        r#"
+            INSERT INTO payment_method (
+                "id",
+                "user_id",
+                "is_default",
+                "method",
+                "info"
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id,user_id,is_default,method,info,created_at;
+        "#,
+        payment_method_id,
+        user_id,
+        is_default,
+        method.to_string(),
+        inser_info
+    )
+    .fetch_one(conn)
+    .await;
     match result {
-        Ok(_) => {
+        Ok(tuple) => {
             let pm = PaymentMethod {
                 id: payment_method_id,
                 user_id,
                 is_default,
                 method,
                 info: info.clone(),
+                created_at: tuple.created_at.unix_timestamp_nanos() / 1_000_000,
             };
             Ok(pm)
         }
