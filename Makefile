@@ -17,7 +17,7 @@ test:
 	make infra/up
 	docker compose exec -T api cargo build
 	docker compose exec -T api cargo test -- --test-threads=1
-	make clean/docker
+	make infra/down
 
 .PHONY: migration/up
 migration/up:

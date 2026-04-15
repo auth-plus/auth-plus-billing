@@ -67,16 +67,18 @@ impl ChargeCreateUsecase {
             .reading_invoice_item
             .get_sum_by_invoice_id(invoice_id)
             .await
-            .expect("Not able to sum items from invoice");
+            .map_err(|_| {
+                String::from("ReadingInvoiceItemError: Not able to sum items from invoice")
+            })?;
         let gateway = self
             .reading_gateway
             .get_priority_list()
             .await
-            .expect("CreatingUserError::UnmappedError Something wrong happen");
+            .map_err(|_| String::from("ReadingGatewayError: Unable to get gateway"))?;
         let external_charge = gateway
             .charge(amount, "auth-plus-billing")
             .await
-            .expect("Problem when creating user on gateway");
+            .map_err(|_| String::from("GatewayAPIError: Problem when charging on gateway"))?;
         let result_charge = self
             .creating_charge
             .create_charge(invoice.id, payment_method.id, &external_charge.id)
@@ -185,8 +187,6 @@ mod test {
             .with(predicate::eq(user_id))
             .times(1)
             .return_const(Ok(payment_method.clone()));
-        let mut mock_ui = MockUpdatingInvoice::new();
-        mock_ui.expect_update().return_const(Ok(invoice.clone()));
         let mut mock_rii = MockReadingInvoiceItem::new();
         mock_rii
             .expect_get_sum_by_invoice_id()

@@ -36,7 +36,9 @@ async fn charge(
     description: &str,
 ) -> Result<GatewayCharge, GatewayAPIError> {
     let client = reqwest::Client::new();
-    let amount_cents = (amount * Decimal::from(100)).to_i64().unwrap();
+    let amount_cents = (amount * Decimal::from(100))
+        .to_i64()
+        .ok_or(GatewayAPIError::ChargeError)?;
     let payload = Intent {
         amount: amount_cents.to_string(),
         currency: "BRL".into(),
@@ -216,7 +218,7 @@ impl GatewayAPI for StripeGateway {
 
 impl StripeGateway {
     pub fn new() -> Self {
-        let config = config::env_var::get_config(); 
+        let config = config::env_var::get_config();
         StripeGateway {
             api_key: config.gateway.stripe.key,
             url: config.gateway.stripe.url,
