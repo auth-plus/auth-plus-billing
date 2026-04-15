@@ -29,9 +29,7 @@ pub async fn retry_charging_invoices() -> Result<(), String> {
 
 #[cfg(test)]
 mod test {
-    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
-    use uuid::Uuid;
-
+    use super::retry_charging_invoices;
     use crate::{
         config::database::get_connection,
         core::{
@@ -51,8 +49,10 @@ mod test {
             },
         },
     };
-
-    use super::retry_charging_invoices;
+    use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
+    use httpmock::prelude::{MockServer, POST};
+    use serde_json::json;
+    use uuid::Uuid;
 
     #[actix_rt::test]
     async fn should_succeed_creating_charge() {
@@ -72,6 +72,21 @@ mod test {
         };
         let charge_id: Uuid;
         let info = PaymentMethodInfo::CreditCardInfo(cc_info);
+        let server = MockServer::start();
+        let prev_stripe_base_url = std::env::var("STRIPE_BASE_URL").ok();
+        unsafe {
+            std::env::set_var("STRIPE_BASE_URL", &server.base_url());
+        }
+        let mock_gateway_host = server.mock(|when, then| {
+            when.method(POST).path("/v1/payment_intents");
+            then.status(201)
+                .header("content-type", "text/json; charset=UTF-8")
+                .json_body(json!({
+                    "id": "cus_123",
+                    "amount": "1000.00",
+                    "currency":  "usd",
+                }));
+        });
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_succeed_creating_charge: user setup went wrong");
@@ -123,6 +138,7 @@ mod test {
             }
             Err(error) => panic!("should_succeed_creating_charge test went wrong {:?}", error),
         }
+        mock_gateway_host.assert();
         delete_charge(&conn, charge_id)
             .await
             .expect("should_succeed_creating_charge: gateway remove went wrong");
@@ -138,5 +154,11 @@ mod test {
         delete_user(&conn, user_id)
             .await
             .expect("should_succeed_creating_charge: user remove went wrong");
+        unsafe {
+            match prev_stripe_base_url {
+                Some(value) => std::env::set_var("STRIPE_BASE_URL", value),
+                None => std::env::remove_var("STRIPE_BASE_URL"),
+            }
+        }
     }
 }

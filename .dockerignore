@@ -1,5 +1,7 @@
 *
-!db
-!src
+!.sqlx/**
+!db/
+!src/
+!tests/
 !Cargo.lock
 !Cargo.toml

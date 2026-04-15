@@ -2,14 +2,15 @@ use crate::{
     config::{self},
     core::{
         gateway::stripe_models::{
-            CustomerInput, CustomerOutput, PaymentMethodOutput, StripePaymentMethod,
+            CustomerInput, CustomerOutput, IntentOutput, PaymentMethodOutput, StripePaymentMethod,
         },
         usecase::driven::gateway::{
-            GatewayAPI, GatewayAPIError, GatewayPaymentMethod, GatewayUser,
+            GatewayAPI, GatewayAPIError, GatewayCharge, GatewayPaymentMethod, GatewayUser,
         },
     },
 };
 use log::error;
+use rust_decimal::{Decimal, prelude::ToPrimitive};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, time::Duration};
 use uuid::Uuid;
@@ -31,11 +32,13 @@ struct Intent {
 async fn charge(
     host: &String,
     api_key: &String,
-    amount: f32,
+    amount: Decimal,
     description: &str,
-) -> Result<bool, GatewayAPIError> {
+) -> Result<GatewayCharge, GatewayAPIError> {
     let client = reqwest::Client::new();
-    let amount_cents = (amount * 100.0).round() as i64;
+    let amount_cents = (amount * Decimal::from(100))
+        .to_i64()
+        .ok_or(GatewayAPIError::ChargeError)?;
     let payload = Intent {
         amount: amount_cents.to_string(),
         currency: "BRL".into(),
@@ -50,17 +53,32 @@ async fn charge(
         .send()
         .await;
 
-    match resp {
-        Ok(body) => {
-            if body.status().is_success() {
-                Ok(true)
+    let body = match resp {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                resp.json::<IntentOutput>().await
             } else {
-                Err(GatewayAPIError::ChargeError)
+                error!("GatewayIntegration.charge: Stripe return not 2XX");
+                return Err(GatewayAPIError::NotSuccessfulReturn);
             }
         }
         Err(err) => {
             error!("GatewayIntegration.charge :{:?}", err);
-            Err(GatewayAPIError::ChargeError)
+            return Err(GatewayAPIError::ChargeError);
+        }
+    };
+    match body {
+        Ok(body) => {
+            let gateway_charge: GatewayCharge = GatewayCharge {
+                id: body.id,
+                amount: amount.to_f32().expect("Amount to able to convert to f32"),
+                currency: body.currency,
+            };
+            Ok(gateway_charge)
+        }
+        Err(err) => {
+            error!("GatewayIntegration.create_customer :{:?}", err);
+            Err(GatewayAPIError::CustomerCreationError)
         }
     }
 }
@@ -174,7 +192,11 @@ impl GatewayAPI for StripeGateway {
             None => panic!("Trying to get a gateway_id without setting"),
         }
     }
-    async fn charge(&self, amount: f32, description: &str) -> Result<bool, GatewayAPIError> {
+    async fn charge(
+        &self,
+        amount: Decimal,
+        description: &str,
+    ) -> Result<GatewayCharge, GatewayAPIError> {
         charge(&self.url, &self.api_key, amount, description).await
     }
     async fn create_customer(

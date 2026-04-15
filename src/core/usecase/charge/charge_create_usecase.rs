@@ -4,7 +4,9 @@ use crate::core::{
     dto::{charge::Charge, invoice::InvoiceStatus},
     usecase::driven::{
         creating_charge::{CreatingCharge, CreatingChargeError},
+        reading_gateway::ReadingGateway,
         reading_invoice::{ReadingInvoice, ReadingInvoiceError},
+        reading_invoice_item::ReadingInvoiceItem,
         reading_payment_method::{ReadingPaymentMethod, ReadingPaymentMethodError},
         updating_invoice::{UpdatingInvoice, UpdatingInvoiceError},
     },
@@ -15,6 +17,8 @@ pub struct ChargeCreateUsecase {
     pub reading_payment_method: Box<dyn ReadingPaymentMethod>,
     pub creating_charge: Box<dyn CreatingCharge>,
     pub updating_invoice: Box<dyn UpdatingInvoice>,
+    pub reading_gateway: Box<dyn ReadingGateway>,
+    pub reading_invoice_item: Box<dyn ReadingInvoiceItem>,
 }
 
 impl ChargeCreateUsecase {
@@ -59,9 +63,25 @@ impl ChargeCreateUsecase {
                 }
             },
         };
+        let amount = self
+            .reading_invoice_item
+            .get_sum_by_invoice_id(invoice_id)
+            .await
+            .map_err(|_| {
+                String::from("ReadingInvoiceItemError: Not able to sum items from invoice")
+            })?;
+        let gateway = self
+            .reading_gateway
+            .get_priority_list()
+            .await
+            .map_err(|_| String::from("ReadingGatewayError: Unable to get gateway"))?;
+        let external_charge = gateway
+            .charge(amount, "auth-plus-billing")
+            .await
+            .map_err(|_| String::from("GatewayAPIError: Problem when charging on gateway"))?;
         let result_charge = self
             .creating_charge
-            .create_charge(invoice.id, payment_method.id)
+            .create_charge(invoice.id, payment_method.id, &external_charge.id)
             .await;
         let charge = match result_charge {
             Ok(charge) => charge,
@@ -103,13 +123,18 @@ mod test {
         },
         usecase::driven::{
             creating_charge::{CreatingChargeError, MockCreatingCharge},
+            gateway::{GatewayAPI, GatewayCharge, MockGatewayAPI},
+            reading_gateway::MockReadingGateway,
             reading_invoice::{MockReadingInvoice, ReadingInvoiceError},
+            reading_invoice_item::MockReadingInvoiceItem,
             reading_payment_method::{MockReadingPaymentMethod, ReadingPaymentMethodError},
             updating_invoice::{MockUpdatingInvoice, UpdatingInvoiceError},
         },
     };
     use fake::{Fake, uuid::UUIDv4};
     use mockall::predicate;
+    use rust_decimal::prelude::ToPrimitive;
+    use rust_decimal_macros::dec;
     use uuid::Uuid;
 
     #[actix_rt::test]
@@ -119,6 +144,7 @@ mod test {
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
         let charge_id: Uuid = UUIDv4.fake();
+        let sum = dec!(100.0);
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -136,12 +162,18 @@ mod test {
             is_default: true,
             method: Method::Pix,
             info,
+            created_at: 123_456_789_012,
         };
         let charge = Charge {
             id: charge_id,
             invoice_id,
             payment_method_id: payment_method.id,
             status: ChargeStatus::Progress,
+        };
+        let gateway_charge = GatewayCharge {
+            id: UUIDv4.fake(),
+            amount: sum.to_f32().unwrap(),
+            currency: String::from("USD"),
         };
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
@@ -155,10 +187,33 @@ mod test {
             .with(predicate::eq(user_id))
             .times(1)
             .return_const(Ok(payment_method.clone()));
+        let mut mock_rii = MockReadingInvoiceItem::new();
+        mock_rii
+            .expect_get_sum_by_invoice_id()
+            .return_const(Ok(sum));
+        let mut mock_g = MockGatewayAPI::new();
+        mock_g
+            .expect_charge()
+            .with(predicate::eq(sum), predicate::eq("auth-plus-billing"))
+            .times(1)
+            .return_const(Ok(gateway_charge.clone()));
+        let mut mock_rg: MockReadingGateway = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .with()
+            .times(1)
+            .return_once(move || {
+                let boxed_gateway: Box<dyn GatewayAPI + Send> = Box::new(mock_g);
+                Ok(boxed_gateway)
+            });
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc
             .expect_create_charge()
-            .with(predicate::eq(invoice_id), predicate::eq(payment_method.id))
+            .with(
+                predicate::eq(invoice_id),
+                predicate::eq(payment_method.id),
+                predicate::eq(gateway_charge.id),
+            )
             .times(1)
             .return_const(Ok(charge.clone()));
         let mut mock_ui = MockUpdatingInvoice::new();
@@ -175,6 +230,8 @@ mod test {
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
             updating_invoice: Box::new(mock_ui),
+            reading_gateway: Box::new(mock_rg),
+            reading_invoice_item: Box::new(mock_rii),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -199,11 +256,17 @@ mod test {
         mock_cc.expect_create_charge().times(0);
         let mut mock_ui = MockUpdatingInvoice::new();
         mock_ui.expect_update().times(0);
+        let mut mock_rg: MockReadingGateway = MockReadingGateway::new();
+        mock_rg.expect_get_priority_list().times(0);
+        let mut mock_rii = MockReadingInvoiceItem::new();
+        mock_rii.expect_get_sum_by_invoice_id().times(0);
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
             updating_invoice: Box::new(mock_ui),
+            reading_gateway: Box::new(mock_rg),
+            reading_invoice_item: Box::new(mock_rii),
         };
         let result = charge_usecase.create_charge("any-hash-not-uuid").await;
 
@@ -227,6 +290,10 @@ mod test {
             .return_const(Err(ReadingInvoiceError::UnmappedError));
         let mut mock_rpm = MockReadingPaymentMethod::new();
         mock_rpm.expect_get_default_by_user_id().times(0);
+        let mut mock_rg: MockReadingGateway = MockReadingGateway::new();
+        mock_rg.expect_get_priority_list().times(0);
+        let mut mock_rii = MockReadingInvoiceItem::new();
+        mock_rii.expect_get_sum_by_invoice_id().times(0);
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc.expect_create_charge().times(0);
         let mut mock_ui = MockUpdatingInvoice::new();
@@ -236,6 +303,8 @@ mod test {
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
             updating_invoice: Box::new(mock_ui),
+            reading_gateway: Box::new(mock_rg),
+            reading_invoice_item: Box::new(mock_rii),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -277,11 +346,17 @@ mod test {
         mock_cc.expect_create_charge().times(0);
         let mut mock_ui = MockUpdatingInvoice::new();
         mock_ui.expect_update().times(0);
+        let mut mock_rg: MockReadingGateway = MockReadingGateway::new();
+        mock_rg.expect_get_priority_list().times(0);
+        let mut mock_rii = MockReadingInvoiceItem::new();
+        mock_rii.expect_get_sum_by_invoice_id().times(0);
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
             updating_invoice: Box::new(mock_ui),
+            reading_gateway: Box::new(mock_rg),
+            reading_invoice_item: Box::new(mock_rii),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -302,6 +377,12 @@ mod test {
         let user_id: Uuid = UUIDv4.fake();
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
+        let sum = dec!(100.0);
+        let gateway_charge = GatewayCharge {
+            id: UUIDv4.fake(),
+            amount: sum.to_f32().unwrap(),
+            currency: String::from("USD"),
+        };
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -319,6 +400,7 @@ mod test {
             is_default: true,
             method: Method::Pix,
             info,
+            created_at: 123_456_789_012,
         };
         let mut mock_ri = MockReadingInvoice::new();
         mock_ri
@@ -332,12 +414,36 @@ mod test {
             .with(predicate::eq(user_id))
             .times(1)
             .return_const(Ok(payment_method.clone()));
+        let mut mock_g = MockGatewayAPI::new();
+        mock_g
+            .expect_charge()
+            .with(predicate::eq(sum), predicate::eq("auth-plus-billing"))
+            .times(1)
+            .return_const(Ok(gateway_charge.clone()));
+        let mut mock_rii = MockReadingInvoiceItem::new();
+        mock_rii
+            .expect_get_sum_by_invoice_id()
+            .return_const(Ok(sum));
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc
             .expect_create_charge()
-            .with(predicate::eq(invoice_id), predicate::eq(payment_method.id))
+            .with(
+                predicate::eq(invoice_id),
+                predicate::eq(payment_method.id),
+                predicate::eq(gateway_charge.id),
+            )
             .times(1)
             .return_const(Err(CreatingChargeError::UnmappedError));
+
+        let mut mock_rg: MockReadingGateway = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .with()
+            .times(1)
+            .return_once(move || {
+                let boxed_gateway: Box<dyn GatewayAPI + Send> = Box::new(mock_g);
+                Ok(boxed_gateway)
+            });
         let mut mock_ui = MockUpdatingInvoice::new();
         mock_ui.expect_update().times(0);
         let charge_usecase = ChargeCreateUsecase {
@@ -345,6 +451,8 @@ mod test {
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
             updating_invoice: Box::new(mock_ui),
+            reading_gateway: Box::new(mock_rg),
+            reading_invoice_item: Box::new(mock_rii),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 
@@ -366,6 +474,12 @@ mod test {
         let invoice_id: Uuid = UUIDv4.fake();
         let payment_method_id: Uuid = UUIDv4.fake();
         let charge_id: Uuid = UUIDv4.fake();
+        let sum = dec!(100.0);
+        let gateway_charge = GatewayCharge {
+            id: UUIDv4.fake(),
+            amount: sum.to_f32().unwrap(),
+            currency: String::from("USD"),
+        };
         let pix_info = PixInfo {
             key: String::from("any@email.com"),
             external_id: String::from("ABCDEFG"),
@@ -383,6 +497,7 @@ mod test {
             is_default: true,
             method: Method::Pix,
             info,
+            created_at: 123_456_789_012,
         };
         let charge = Charge {
             id: charge_id,
@@ -402,10 +517,25 @@ mod test {
             .with(predicate::eq(user_id))
             .times(1)
             .return_const(Ok(payment_method.clone()));
+        let mut mock_g = MockGatewayAPI::new();
+        mock_g
+            .expect_charge()
+            .with(predicate::eq(sum), predicate::eq("auth-plus-billing"))
+            .times(1)
+            .return_const(Ok(gateway_charge.clone()));
+        let mut mock_rii = MockReadingInvoiceItem::new();
+        mock_rii
+            .expect_get_sum_by_invoice_id()
+            .times(1)
+            .return_const(Ok(sum));
         let mut mock_cc = MockCreatingCharge::new();
         mock_cc
             .expect_create_charge()
-            .with(predicate::eq(invoice_id), predicate::eq(payment_method.id))
+            .with(
+                predicate::eq(invoice_id),
+                predicate::eq(payment_method.id),
+                predicate::eq(gateway_charge.id),
+            )
             .times(1)
             .return_const(Ok(charge.clone()));
         let mut mock_ui = MockUpdatingInvoice::new();
@@ -417,11 +547,22 @@ mod test {
             )
             .return_const(Err(UpdatingInvoiceError::UnmappedError))
             .times(1);
+        let mut mock_rg: MockReadingGateway = MockReadingGateway::new();
+        mock_rg
+            .expect_get_priority_list()
+            .with()
+            .times(1)
+            .return_once(move || {
+                let boxed_gateway: Box<dyn GatewayAPI + Send> = Box::new(mock_g);
+                Ok(boxed_gateway)
+            });
         let charge_usecase = ChargeCreateUsecase {
             reading_invoice: Box::new(mock_ri),
             reading_payment_method: Box::new(mock_rpm),
             creating_charge: Box::new(mock_cc),
             updating_invoice: Box::new(mock_ui),
+            reading_gateway: Box::new(mock_rg),
+            reading_invoice_item: Box::new(mock_rii),
         };
         let result = charge_usecase.create_charge(&invoice_id.to_string()).await;
 

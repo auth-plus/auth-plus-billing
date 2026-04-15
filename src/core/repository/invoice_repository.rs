@@ -6,6 +6,7 @@ use crate::core::usecase::driven::updating_invoice::{UpdatingInvoice, UpdatingIn
 use log::error;
 use rust_decimal::prelude::ToPrimitive;
 pub use sqlx::postgres::PgPool;
+use sqlx::{Postgres, QueryBuilder};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -74,25 +75,20 @@ async fn create(
             return Err(CreatingInvoiceError::UnmappedError);
         }
     }
-    let mut insert_iten: Vec<Uuid> = Vec::new();
-    for it in itens {
-        let item_id = Uuid::new_v4();
-        let r_invoice_item = sqlx::query("INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency) VALUES ($1, $2, $3, $4, $5, $6);")
-            .bind(item_id)
-            .bind(invoice_id)
-            .bind(it.description.clone())
-            .bind(it.quantity.to_i32())
-            .bind(it.amount.to_i32())
-            .bind(it.currency.clone())
-            .execute(conn)
-            .await;
-        match r_invoice_item {
-            Ok(_) => insert_iten.push(item_id),
-            Err(error) => {
-                error!("InvoiceRepository.create :{:?}", error);
-                return Err(CreatingInvoiceError::UnmappedError);
-            }
-        }
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "INSERT INTO invoice_item (id, invoice_id, description, quantity, amount, currency)",
+    );
+    query_builder.push_values(itens, |mut b, it| {
+        b.push_bind(Uuid::new_v4())
+            .push_bind(invoice_id)
+            .push_bind(it.description.clone())
+            .push_bind(it.quantity.to_i32())
+            .push_bind(it.amount.to_i32())
+            .push_bind(it.currency.clone());
+    });
+    let query = query_builder.build();
+    if query.execute(conn).await.is_err() {
+        return Err(CreatingInvoiceError::UnmappedError);
     }
     let value = Invoice {
         id: invoice_id,

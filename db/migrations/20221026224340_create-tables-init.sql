@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS invoice_item (
 CREATE TABLE IF NOT EXISTS payment_method (
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "user_id" UUID NOT NULL,
-    "is_default" BOOLEAN DEFAULT TRUE,
+    "is_default" BOOLEAN NOT NULL DEFAULT TRUE,
     "method" TEXT NOT NULL,
     -- could be credit_card, pix, ledger
     "info" JSONB NOT NULL,

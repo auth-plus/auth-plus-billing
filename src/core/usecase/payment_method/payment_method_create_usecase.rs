@@ -171,6 +171,7 @@ mod test {
             info: info.clone(),
             is_default,
             method,
+            created_at: 123_456_789_012,
         };
         let gi = GatewayIntegration {
             id: gateway_integration_id,
@@ -467,6 +468,7 @@ mod test {
             info: info.clone(),
             is_default,
             method,
+            created_at: 123_456_789_012,
         };
         let gateway_pm = GatewayPaymentMethod { id: UUIDv4.fake() };
         let mut mock_g = MockGatewayAPI::new();

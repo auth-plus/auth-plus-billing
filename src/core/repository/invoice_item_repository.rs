@@ -2,6 +2,9 @@ use crate::core::dto::invoice_item::InvoiceItem;
 use crate::core::usecase::driven::creating_invoice_item::{
     CreatingInvoiceItem, CreatingInvoiceItemError,
 };
+use crate::core::usecase::driven::reading_invoice_item::{
+    ReadingInvoiceItem, ReadingInvoiceItemError,
+};
 use log::error;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
@@ -10,11 +13,13 @@ use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
 pub struct InvoiceItemDAO {
+    // id: Option<Uuid>,
     pub invoice_id: Uuid,
     pub description: String,
     pub quantity: u16,
     pub amount: Decimal,
     pub currency: String,
+    // created_at: time::OffsetDateTime,
 }
 
 #[derive(Clone)]
@@ -45,6 +50,22 @@ async fn insert_item(
     Ok(value)
 }
 
+async fn get_sum_by_invoice_id(
+    conn: &PgPool,
+    invoice_id: Uuid,
+) -> Result<Decimal, ReadingInvoiceItemError> {
+    let sum: Option<rust_decimal::Decimal> =
+        sqlx::query_scalar("SELECT SUM(amount) FROM invoice_item WHERE invoice_id = $1")
+            .bind(invoice_id)
+            .fetch_one(conn)
+            .await
+            .map_err(|err| {
+                error!("Database error: {:?}", err);
+                ReadingInvoiceItemError::UnmappedError
+            })?;
+    Ok(sum.unwrap_or_default())
+}
+
 #[async_trait::async_trait]
 impl CreatingInvoiceItem for InvoiceItemRepository {
     async fn insert_item(
@@ -53,6 +74,16 @@ impl CreatingInvoiceItem for InvoiceItemRepository {
         item: &InvoiceItem,
     ) -> Result<InvoiceItem, CreatingInvoiceItemError> {
         insert_item(&self.conn, invoice_id, item).await
+    }
+}
+
+#[async_trait::async_trait]
+impl ReadingInvoiceItem for InvoiceItemRepository {
+    async fn get_sum_by_invoice_id(
+        &self,
+        invoice_id: Uuid,
+    ) -> Result<Decimal, ReadingInvoiceItemError> {
+        get_sum_by_invoice_id(&self.conn, invoice_id).await
     }
 }
 

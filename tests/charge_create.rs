@@ -16,6 +16,8 @@ mod charge_create_tests {
         presentation::http::routes::charge::{self, CreateChargeInputSchema},
     };
     use fake::{Fake, faker::lorem::en::Word, uuid::UUIDv4};
+    use httpmock::prelude::{MockServer, POST};
+    use serde_json::json;
     use uuid::Uuid;
 
     #[actix_web::test]
@@ -32,7 +34,21 @@ mod charge_create_tests {
             external_id: String::from("ABCDEFG"),
         };
         let info = PaymentMethodInfo::PixInfo(pix_info);
-
+        let server = MockServer::start();
+        let mock_gateway_host = server.mock(|when, then| {
+            when.method(POST).path("/v1/payment_intents");
+            then.status(201)
+                .header("content-type", "text/json; charset=UTF-8")
+                .json_body(json!({
+                    "id": "cus_123",
+                    "amount": "10000",
+                    "currency":  "usd",
+                }));
+        });
+        let prev_stripe_base_url = std::env::var("STRIPE_BASE_URL").ok();
+        unsafe {
+            std::env::set_var("STRIPE_BASE_URL", &server.base_url());
+        }
         create_user(&conn, user_id, external_id)
             .await
             .expect("should_create_charge: user setup went wrong");
@@ -49,7 +65,12 @@ mod charge_create_tests {
         let payload = CreateChargeInputSchema {
             invoice_id: invoice_id.to_string(),
         };
-        let app = test::init_service(App::new().service(charge::create_charge)).await;
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(server.base_url()))
+                .service(charge::create_charge),
+        )
+        .await;
         let req = test::TestRequest::post()
             .uri("/charge")
             .set_json(web::Json(payload))
@@ -57,7 +78,7 @@ mod charge_create_tests {
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
         let body: Charge = test::read_body_json(resp).await;
-
+        mock_gateway_host.assert();
         delete_charge(&conn, body.id)
             .await
             .expect("should_create_charge: charge remove went wrong");
@@ -73,6 +94,12 @@ mod charge_create_tests {
         delete_user(&conn, user_id)
             .await
             .expect("should_create_charge: user remove went wrong");
+        unsafe {
+            match prev_stripe_base_url {
+                Some(value) => std::env::set_var("STRIPE_BASE_URL", value),
+                None => std::env::remove_var("STRIPE_BASE_URL"),
+            }
+        }
     }
 
     #[actix_web::test]

@@ -9,6 +9,7 @@ pub trait CreatingCharge {
         &self,
         invoice_id: Uuid,
         payment_method_id: Uuid,
+        external_id: &str,
     ) -> Result<Charge, CreatingChargeError>;
 }
 
