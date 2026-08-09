@@ -1,6 +1,7 @@
 use auth_plus_billing::presentation;
 
-fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
-    presentation::kafka::start()
+    presentation::kafka::start().await
 }

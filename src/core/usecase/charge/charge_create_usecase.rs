@@ -22,19 +22,27 @@ pub struct ChargeCreateUsecase {
 }
 
 impl ChargeCreateUsecase {
+    #[tracing::instrument(skip(self))]
     pub async fn create_charge(&self, invoice_id_str: &str) -> Result<Charge, String> {
+        tracing::info!("Starting charge creation process for invoice_id: {}", invoice_id_str);
         let invoice_id = match Uuid::parse_str(invoice_id_str) {
             Ok(id) => id,
-            Err(_) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => {
+                tracing::error!("external id provided isn't uuid: {}", invoice_id_str);
+                return Err(String::from("external id provided isn't uuid"));
+            }
         };
+        tracing::info!("Fetching invoice by id: {}", invoice_id);
         let result_invoice = self.reading_invoice.get_by_id(invoice_id).await;
         let invoice = match result_invoice {
             Ok(invoice) => invoice,
             Err(error) => match error {
                 ReadingInvoiceError::InvoiceNotFoundError => {
+                    tracing::error!("invoice not found: {}", invoice_id);
                     return Err(String::from("invoice not found"));
                 }
                 ReadingInvoiceError::UnmappedError => {
+                    tracing::error!("ReadingInvoiceError::UnmappedError Something wrong happen for invoice: {}", invoice_id);
                     return Err(String::from(
                         "ReadingInvoiceError::UnmappedError Something wrong happen",
                     ));
@@ -45,10 +53,12 @@ impl ChargeCreateUsecase {
             && invoice.status != InvoiceStatus::ChargedWithError
             && invoice.status != InvoiceStatus::Pending
         {
+            tracing::error!("Invoice could not be charged because of current status: {:?}", invoice.status);
             return Err(String::from(
                 "Invoice can could not be charged because of current status",
             ));
         }
+        tracing::info!("Fetching default payment method for user_id: {}", invoice.user_id);
         let result_payment_method = self
             .reading_payment_method
             .get_default_by_user_id(&invoice.user_id)
@@ -57,28 +67,40 @@ impl ChargeCreateUsecase {
             Ok(payment_method) => payment_method,
             Err(error) => match error {
                 ReadingPaymentMethodError::UnmappedError => {
+                    tracing::error!("ReadingPaymentMethodError::UnmappedError Something wrong happen for user: {}", invoice.user_id);
                     return Err(String::from(
                         "ReadingPaymentMethodError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Calculating sum of items for invoice: {}", invoice_id);
         let amount = self
             .reading_invoice_item
             .get_sum_by_invoice_id(invoice_id)
             .await
             .map_err(|_| {
+                tracing::error!("ReadingInvoiceItemError: Not able to sum items from invoice: {}", invoice_id);
                 String::from("ReadingInvoiceItemError: Not able to sum items from invoice")
             })?;
+        tracing::info!("Fetching gateway priority list");
         let gateway = self
             .reading_gateway
             .get_priority_list()
             .await
-            .map_err(|_| String::from("ReadingGatewayError: Unable to get gateway"))?;
+            .map_err(|_| {
+                tracing::error!("ReadingGatewayError: Unable to get gateway list");
+                String::from("ReadingGatewayError: Unable to get gateway")
+            })?;
+        tracing::info!("Charging amount {} on gateway", amount);
         let external_charge = gateway
             .charge(amount, "auth-plus-billing")
             .await
-            .map_err(|_| String::from("GatewayAPIError: Problem when charging on gateway"))?;
+            .map_err(|_| {
+                tracing::error!("GatewayAPIError: Problem when charging on gateway for amount {}", amount);
+                String::from("GatewayAPIError: Problem when charging on gateway")
+            })?;
+        tracing::info!("Creating internal charge for invoice: {}", invoice.id);
         let result_charge = self
             .creating_charge
             .create_charge(invoice.id, payment_method.id, &external_charge.id)
@@ -87,25 +109,34 @@ impl ChargeCreateUsecase {
             Ok(charge) => charge,
             Err(error) => match error {
                 CreatingChargeError::KafkaProducerError => {
+                    tracing::error!("Error on producing on kafka for charge creation");
                     return Err(String::from("Error on producing on kafka"));
                 }
                 CreatingChargeError::UnmappedError => {
+                    tracing::error!("CreatingChargeError::UnmappedError Something wrong happen during charge creation");
                     return Err(String::from(
                         "CreatingChargeError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Updating invoice status to Pending for invoice: {}", invoice_id);
         match self
             .updating_invoice
             .update(invoice_id, InvoiceStatus::Pending)
             .await
         {
-            Ok(_) => Ok(charge),
+            Ok(_) => {
+                tracing::info!("Charge created successfully for invoice: {}", invoice_id);
+                Ok(charge)
+            }
             Err(error) => match error {
-                UpdatingInvoiceError::UnmappedError => Err(String::from(
-                    "UpdatingInvoiceError::UnmappedError Something wrong happen",
-                )),
+                UpdatingInvoiceError::UnmappedError => {
+                    tracing::error!("UpdatingInvoiceError::UnmappedError Something wrong happen for invoice: {}", invoice_id);
+                    Err(String::from(
+                        "UpdatingInvoiceError::UnmappedError Something wrong happen",
+                    ))
+                }
             },
         }
     }

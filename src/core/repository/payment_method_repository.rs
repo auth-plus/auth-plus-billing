@@ -10,7 +10,7 @@ pub use sqlx::postgres::PgPool;
 use sqlx::types::Json;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(sqlx::FromRow, Debug)]
 struct PaymentMethodDAO {
     id: Uuid,
     user_id: Uuid,
@@ -29,25 +29,23 @@ async fn get_default_by_user_id(
     conn: &PgPool,
     user_id: &Uuid,
 ) -> Result<PaymentMethod, ReadingPaymentMethodError> {
-    let result = sqlx::query_as!(
-        PaymentMethodDAO,
-        r#"
+    let result = sqlx::query_as::<_, PaymentMethodDAO>(
+        "
             SELECT
                 id,
                 user_id,
                 is_default,
                 method,
-                info as "info: sqlx::types::Json<PaymentMethodInfo>",
+                info,
                 created_at
             FROM
                 payment_method
             WHERE
                 is_default = true
                 and user_id = $1
-        "#,
-        user_id
+        "
     )
-    // .bind(user_id.to_string())
+    .bind(user_id.to_string())
     .fetch_one(conn)
     .await;
 
@@ -81,24 +79,30 @@ async fn create(
     let payment_method_id = Uuid::new_v4();
     let inser_info =
         serde_json::to_value(info).map_err(|_| CreatingPaymentMethodError::UnmappedError)?;
-    let result = sqlx::query!(
-        r#"
-            INSERT INTO payment_method (
-                "id",
-                "user_id",
-                "is_default",
-                "method",
-                "info"
-            )
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id,user_id,is_default,method,info,created_at;
-        "#,
-        payment_method_id,
-        user_id,
-        is_default,
-        method.to_string(),
-        inser_info
+    let result = sqlx::query_as::<_, PaymentMethodDAO>(
+    "
+        INSERT INTO payment_method (
+            id,
+            user_id,
+            is_default,
+            method,
+            info
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING
+            id,
+            user_id,
+            is_default,
+            method,
+            info,
+            created_at;
+    ",
     )
+    .bind(payment_method_id)
+    .bind(user_id)
+    .bind(is_default)
+    .bind(method.to_string())
+    .bind(inser_info)
     .fetch_one(conn)
     .await;
     match result {

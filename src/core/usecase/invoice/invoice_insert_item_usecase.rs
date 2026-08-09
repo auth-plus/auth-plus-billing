@@ -11,7 +11,6 @@ use crate::core::{
         reading_user::{ReadingUser, ReadingUserError},
     },
 };
-use log::error;
 use redis::Commands;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -30,37 +29,57 @@ pub enum InvoiceInsertItemResponse {
 }
 
 impl InvoiceInsertItemUsecase {
+    #[tracing::instrument(skip(self, itens))]
     pub async fn create_invoice(
         &self,
         external_user_id: &str,
         itens: &[InvoiceItem],
         idempotency_key: &str,
     ) -> Result<InvoiceInsertItemResponse, String> {
+        tracing::info!("Starting create_invoice process for user: {} with idempotency_key: {}", external_user_id, idempotency_key);
         let user_id = match Uuid::parse_str(external_user_id) {
             Ok(id) => id,
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_error) => {
+                tracing::error!("external id provided isn't uuid: {}", external_user_id);
+                return Err(String::from("external id provided isn't uuid"));
+            }
         };
+        tracing::info!("Checking cache for idempotency_key: {}", idempotency_key);
         let mut cache_client = cache::get_connection();
         let idempotency: Option<String> = cache_client
             .get(format!("create_invoice:{}", idempotency_key))
-            .map_err(|e| format!("error fetching create_invoice cache: {}", e))?;
+            .map_err(|e| {
+                tracing::error!("error fetching create_invoice cache: {}", e);
+                format!("error fetching create_invoice cache: {}", e)
+            })?;
         if let Some(value) = idempotency {
             let v: InvoiceInsertItemResponse = serde_json::from_str(&value)
-                .map_err(|e| format!("create_invoice error when parsing from cache: {}", e))?;
+                .map_err(|e| {
+                    tracing::error!("create_invoice error when parsing from cache: {}", e);
+                    format!("create_invoice error when parsing from cache: {}", e)
+                })?;
+            tracing::info!("Returning cached response for idempotency_key: {}", idempotency_key);
             return Ok(v);
         };
+        tracing::info!("Fetching user by id: {}", user_id);
         let result_user = self.reading_user.list_by_id(&user_id).await;
         let user = match result_user {
             Ok(user) => user,
             Err(error) => match error {
-                ReadingUserError::UserNotFoundError => return Err(String::from("User Not found")),
+                ReadingUserError::UserNotFoundError => {
+                    tracing::error!("User Not found: {}", external_user_id);
+                    return Err(String::from("User Not found"));
+                }
                 ReadingUserError::UnmappedError => {
+                    tracing::error!("ReadingUserError::UnmappedError Something wrong happen for user: {}", external_user_id);
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+
+        tracing::info!("Fetching existing invoices for user: {}", user.id);
         let current_invoices = self.reading_invoice.list_by_user_id(user.id).await;
         let does_exist: Option<Invoice> = match current_invoices {
             Ok(list) => {
@@ -70,40 +89,53 @@ impl InvoiceInsertItemUsecase {
                     .collect();
                 draft_list.first().cloned()
             }
-            Err(_error) => return Err(String::from("external id provided isn't uuid")),
+            Err(_error) => {
+                tracing::error!("Error reading invoices for user: {}", user.id);
+                return Err(String::from("external id provided isn't uuid"));
+            }
         };
 
         match does_exist {
             None => {
+                tracing::info!("No existing draft invoice found. Creating new invoice.");
                 let result_invoice = self
                     .creating_invoice
                     .create(&user.id, itens, idempotency_key)
                     .await;
                 match result_invoice {
                     Ok(invoice) => {
+                        tracing::info!("Invoice created successfully: {}. Caching response.", invoice.id);
                         let cache_value = serde_json::to_string(
                             &InvoiceInsertItemResponse::Invoice(invoice.clone()),
                         )
-                        .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
+                        .map_err(|e| {
+                            tracing::error!("Failed to serialize create_invoice cache: {}", e);
+                            format!("Failed to serialize create_invoice cache: {}", e)
+                        })?;
                         if let Err(e) = cache_client.set::<_, _, ()>(
                             format!("create_invoice:{}", idempotency_key),
                             cache_value,
                         ) {
-                            error!("create_invoice error when setting into cache: {:?}", e);
+                            tracing::error!("create_invoice error when setting into cache: {:?}", e);
                         }
                         Ok(InvoiceInsertItemResponse::Invoice(invoice))
                     }
                     Err(error) => match error {
                         CreatingInvoiceError::InvoiceNotFoundError => {
+                            tracing::error!("Invoice Not found while creating");
                             Err(String::from("Invoice Not found"))
                         }
-                        CreatingInvoiceError::UnmappedError => Err(String::from(
-                            "CreatingInvoiceError::UnmappedError Something wrong happen",
-                        )),
+                        CreatingInvoiceError::UnmappedError => {
+                            tracing::error!("CreatingInvoiceError::UnmappedError Something wrong happen while creating invoice");
+                            Err(String::from(
+                                "CreatingInvoiceError::UnmappedError Something wrong happen",
+                            ))
+                        }
                     },
                 }
             }
             Some(invoice) => {
+                tracing::info!("Found existing draft invoice: {}. Inserting {} items.", invoice.id, itens.len());
                 let mut item_list: Vec<InvoiceItem> = vec![];
                 for item in itens.iter() {
                     let result_invoice_item = self
@@ -113,19 +145,24 @@ impl InvoiceInsertItemUsecase {
                     match result_invoice_item {
                         Ok(invoice_item) => item_list.push(invoice_item),
                         Err(_) => {
+                            tracing::error!("CreatingInvoiceError::UnmappedError Something wrong happen while inserting item");
                             return Err(String::from(
                                 "CreatingInvoiceError::UnmappedError Something wrong happen",
                             ));
                         }
                     }
                 }
+                tracing::info!("Successfully inserted {} items to invoice: {}. Caching response.", item_list.len(), invoice.id);
                 let cache_value =
                     serde_json::to_string(&InvoiceInsertItemResponse::Item(item_list.clone()))
-                        .map_err(|e| format!("Failed to serialize create_invoice cache: {}", e))?;
+                        .map_err(|e| {
+                            tracing::error!("Failed to serialize create_invoice cache: {}", e);
+                            format!("Failed to serialize create_invoice cache: {}", e)
+                        })?;
                 let set_idempotency: Result<(), redis::RedisError> =
                     cache_client.set(format!("create_invoice:{}", idempotency_key), cache_value);
                 if set_idempotency.is_err() {
-                    error!("create_invoice error when setting into cache");
+                    tracing::error!("create_invoice error when setting into cache");
                 }
                 Ok(InvoiceInsertItemResponse::Item(item_list))
             }

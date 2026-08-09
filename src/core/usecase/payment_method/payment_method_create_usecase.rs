@@ -21,6 +21,7 @@ pub struct PaymentMethodCreateUsecase {
 }
 
 impl PaymentMethodCreateUsecase {
+    #[tracing::instrument(skip(self))]
     pub async fn create(
         &self,
         external_user_id_str: &str,
@@ -28,38 +29,51 @@ impl PaymentMethodCreateUsecase {
         method: Method,
         info: &PaymentMethodInfo,
     ) -> Result<PaymentMethod, String> {
+        tracing::info!("Starting payment method creation for external_user_id: {}", external_user_id_str);
         let external_user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
-            Err(_) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => {
+                tracing::error!("external id provided isn't uuid: {}", external_user_id_str);
+                return Err(String::from("external id provided isn't uuid"));
+            }
         };
+        tracing::info!("Fetching user by id: {}", external_user_id);
         let result_user = self.reading_user.list_by_id(&external_user_id).await;
         let user = match result_user {
             Ok(user) => user,
             Err(error) => match error {
-                ReadingUserError::UserNotFoundError => return Err(String::from("User Not found")),
+                ReadingUserError::UserNotFoundError => {
+                    tracing::error!("User Not found: {}", external_user_id_str);
+                    return Err(String::from("User Not found"));
+                }
                 ReadingUserError::UnmappedError => {
+                    tracing::error!("ReadingUserError::UnmappedError Something wrong happen for user: {}", external_user_id_str);
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Fetching gateway priority list");
         let result_gateway = self.reading_gateway.get_priority_list().await;
         let gateway = match result_gateway {
             Ok(gate) => gate,
             Err(error) => match error {
                 ReadingGatewayError::NoGatewayFound => {
+                    tracing::error!("ReadingGatewayError::NoGatewayFound Something wrong happen");
                     return Err(String::from(
                         "ReadingGatewayError::NoGatewayFound Something wrong happen",
                     ));
                 }
                 ReadingGatewayError::UnmappedError => {
+                    tracing::error!("ReadingGatewayError::UnmappedError Something wrong happen");
                     return Err(String::from(
                         "ReadingGatewayError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Creating internal payment method for user: {}", user.id);
         let result_pm = self
             .creating_payment_method
             .create(user.id, is_default, method, info)
@@ -68,49 +82,67 @@ impl PaymentMethodCreateUsecase {
             Ok(pm) => pm,
             Err(error) => match error {
                 CreatingPaymentMethodError::UnmappedError => {
+                    tracing::error!("CreatingPaymentMethodError::UnmappedError Something wrong happen for user: {}", user.id);
                     return Err(String::from(
                         "CreatingPaymentMethodError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Creating external payment method on gateway");
         let external_pm = gateway.create_payment_method("boleto").await;
         let gateway_pm = match external_pm {
             Ok(pm) => pm,
             Err(error) => match error {
                 GatewayAPIError::NotSuccessfulReturn => {
+                    tracing::error!("GatewayAPIError::NotSuccessfulReturn for user: {}", user.id);
                     return Err(String::from(
                         "CreatingPaymentMethodError::UnmappedError Something wrong happen",
                     ));
                 }
                 GatewayAPIError::PaymentMethodTransformError => {
+                    tracing::error!("GatewayAPIError::PaymentMethodTransformError for user: {}", user.id);
                     return Err(String::from(
                         "CreatingPaymentMethodError::UnmappedError Something wrong happen",
                     ));
                 }
                 _ => {
+                    tracing::error!("GatewayAPIError Unmapped error for user: {}", user.id);
                     return Err(String::from(
                         "CreatingPaymentMethodError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Updating gateway integration for user: {} and gateway_pm: {}", user.id, gateway_pm.id);
         let result_gi = self
             .updating_gateway_integration
             .update(gateway.get_id(), user.id, pm.id, &gateway_pm.id)
             .await;
         match result_gi {
-            Ok(_) => Ok(pm),
+            Ok(_) => {
+                tracing::info!("Payment method created successfully for user: {}", user.id);
+                Ok(pm)
+            }
             Err(error) => match error {
-                UpdatingGatewayIntegrationError::DuplicateGatewayIntegration => Err(String::from(
-                    "UpdatingGatewayIntegrationError::DuplicateGatewayIntegration Something wrong happen",
-                )),
-                UpdatingGatewayIntegrationError::NoGatewayIntegration => Err(String::from(
-                    "UpdatingGatewayIntegrationError::NoGatewayIntegration Something wrong happen",
-                )),
-                UpdatingGatewayIntegrationError::UnmappedError => Err(String::from(
-                    "UpdatingGatewayIntegrationError::UnmappedError Something wrong happen",
-                )),
+                UpdatingGatewayIntegrationError::DuplicateGatewayIntegration => {
+                    tracing::error!("UpdatingGatewayIntegrationError::DuplicateGatewayIntegration for user: {}", user.id);
+                    Err(String::from(
+                        "UpdatingGatewayIntegrationError::DuplicateGatewayIntegration Something wrong happen",
+                    ))
+                }
+                UpdatingGatewayIntegrationError::NoGatewayIntegration => {
+                    tracing::error!("UpdatingGatewayIntegrationError::NoGatewayIntegration for user: {}", user.id);
+                    Err(String::from(
+                        "UpdatingGatewayIntegrationError::NoGatewayIntegration Something wrong happen",
+                    ))
+                }
+                UpdatingGatewayIntegrationError::UnmappedError => {
+                    tracing::error!("UpdatingGatewayIntegrationError::UnmappedError for user: {}", user.id);
+                    Err(String::from(
+                        "UpdatingGatewayIntegrationError::UnmappedError Something wrong happen",
+                    ))
+                }
             },
         }
     }
