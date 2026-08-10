@@ -5,6 +5,7 @@ pub struct App {
     pub env: String,
     pub name: String,
     pub port: u16,
+    pub uptrace_dsn: Option<String>,
 }
 
 #[derive(Clone)]
@@ -45,10 +46,12 @@ pub fn get_config() -> Config {
     let app_name = env::var("APP_NAME").expect("APP_NAME is not set");
     let app_port_string: String = env::var("PORT").expect("PORT is not set");
     let app_port: u16 = app_port_string.parse::<u16>().unwrap();
+    let uptrace_dsn = env::var("UPTRACE_DSN").ok();
     let app = App {
         env: app_env,
         name: app_name,
         port: app_port,
+        uptrace_dsn,
     };
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
     let database = Database { url: db_url };

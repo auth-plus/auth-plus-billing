@@ -18,57 +18,74 @@ pub struct UserCreateUsecase {
 }
 
 impl UserCreateUsecase {
+    #[tracing::instrument(skip(self))]
     pub async fn create_user(
         &self,
         external_user_id_str: &str,
         name: &str,
         email: &str,
     ) -> Result<User, String> {
+        tracing::info!("Starting user creation process for external_user_id: {}", external_user_id_str);
         let external_user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
-            Err(_) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => {
+                tracing::error!("external id provided isn't uuid: {}", external_user_id_str);
+                return Err(String::from("external id provided isn't uuid"));
+            }
         };
+        tracing::info!("Fetching gateway priority list");
         let gateway = self
             .reading_gateway
             .get_priority_list()
             .await
             .expect("CreatingUserError::UnmappedError Something wrong happen");
+        
+        tracing::info!("Creating customer on gateway: {}", gateway.get_id());
         let gateway_user = gateway
             .create_customer(name, email)
             .await
             .expect("Problem when creating user on gateway");
 
+        tracing::info!("Creating internal user for external_user_id: {}", external_user_id);
         let result_user: Result<User, CreatingUserError> =
             self.creating_user.create(&external_user_id).await;
         let internal_user = match result_user {
             Ok(user) => user,
             Err(error) => match error {
                 CreatingUserError::UnmappedError => {
+                    tracing::error!("CreatingUserError::UnmappedError Something wrong happen for external_user_id: {}", external_user_id);
                     return Err(String::from(
                         "CreatingUserError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        
         let gateway_id = gateway.get_id();
+        tracing::info!("Creating gateway integration between internal user {} and gateway user {}", internal_user.id, gateway_user.id);
         match self
             .creating_gateway_integration
             .create(gateway_id, internal_user.id, &gateway_user.id)
             .await
         {
-            Ok(_) => {}
+            Ok(_) => {
+                tracing::info!("User created successfully: {}", internal_user.id);
+            }
             Err(error) => match error {
                 CreatingGatewayIntegrationError::UnmappedError => {
+                    tracing::error!("CreatingGatewayIntegrationError::UnmappedError Something wrong happen for user: {}", internal_user.id);
                     return Err(String::from(
                         "CreatingGatewayIntegrationError::UnmappedError Something wrong happen",
                     ));
                 }
                 CreatingGatewayIntegrationError::DuplicateGatewayIntegration => {
+                    tracing::error!("CreatingGatewayIntegrationError::DuplicateGatewayIntegration Something wrong happen for user: {}", internal_user.id);
                     return Err(String::from(
                         "CreatingGatewayIntegrationError::DuplicateGatewayIntegration Something wrong happen",
                     ));
                 }
                 CreatingGatewayIntegrationError::NoGatewayIntegration => {
+                    tracing::error!("CreatingGatewayIntegrationError::NoGatewayIntegration Something wrong happen for user: {}", internal_user.id);
                     return Err(String::from(
                         "CreatingGatewayIntegrationError::NoGatewayIntegration Something wrong happen",
                     ));

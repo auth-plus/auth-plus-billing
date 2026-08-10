@@ -5,7 +5,7 @@ pub use sqlx::postgres::{PgPool, PgPoolOptions};
 pub async fn get_connection() -> PgPool {
     let config = super::env_var::get_config();
     PgPoolOptions::new()
-        .max_connections(20) // Tune based on load
+        .max_connections(20)
         .min_connections(5)
         .acquire_timeout(Duration::from_secs(8))
         .idle_timeout(Duration::from_secs(300))

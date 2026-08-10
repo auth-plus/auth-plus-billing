@@ -4,7 +4,6 @@ use rdkafka::message::Message;
 use crate::config::kafka::get_consumer;
 use log::{error, info};
 
-#[tokio::main]
 pub async fn start() -> std::io::Result<()> {
     let topics = &[
         "2FA_EMAIL_CREATED",

@@ -18,7 +18,6 @@ enum Commands {
     Rci,
 }
 
-#[tokio::main]
 pub async fn start() -> std::io::Result<()> {
     let cli = Cli::parse();
     info!("Job {:?} starting", cli.command);

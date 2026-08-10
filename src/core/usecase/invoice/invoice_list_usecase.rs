@@ -12,44 +12,75 @@ pub struct InvoiceListUsecase {
 }
 
 impl InvoiceListUsecase {
+    #[tracing::instrument(skip(self))]
     pub async fn get_by_user_id(&self, external_user_id_str: &str) -> Result<Vec<Invoice>, String> {
+        tracing::info!("Starting to fetch invoices for external_user_id: {}", external_user_id_str);
         let user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
-            Err(_) => return Err(String::from("external id provided isn't uuid")),
+            Err(_) => {
+                tracing::error!("external id provided isn't uuid: {}", external_user_id_str);
+                return Err(String::from("external id provided isn't uuid"));
+            }
         };
+        tracing::info!("Fetching user by id: {}", user_id);
         let result_user = self.reading_user.list_by_id(&user_id).await;
         let user = match result_user {
             Ok(user) => user,
             Err(error) => match error {
-                ReadingUserError::UserNotFoundError => return Err(String::from("User Not found")),
+                ReadingUserError::UserNotFoundError => {
+                    tracing::error!("User Not found: {}", external_user_id_str);
+                    return Err(String::from("User Not found"));
+                }
                 ReadingUserError::UnmappedError => {
+                    tracing::error!("ReadingUserError::UnmappedError Something wrong happen for user: {}", external_user_id_str);
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
                     ));
                 }
             },
         };
+        tracing::info!("Fetching invoices for user: {}", user.id);
         let result_invoice = self.reading_invoice.list_by_user_id(user.id).await;
         match result_invoice {
-            Ok(invoices) => Ok(invoices),
+            Ok(invoices) => {
+                tracing::info!("Found {} invoices for user: {}", invoices.len(), user.id);
+                Ok(invoices)
+            }
             Err(error) => match error {
-                ReadingInvoiceError::InvoiceNotFoundError => Err(String::from("Invoice Not found")),
-                ReadingInvoiceError::UnmappedError => Err(String::from(
-                    "ReadingInvoiceError::UnmappedError Something wrong happen",
-                )),
+                ReadingInvoiceError::InvoiceNotFoundError => {
+                    tracing::error!("Invoice Not found for user: {}", user.id);
+                    Err(String::from("Invoice Not found"))
+                }
+                ReadingInvoiceError::UnmappedError => {
+                    tracing::error!("ReadingInvoiceError::UnmappedError Something wrong happen for user: {}", user.id);
+                    Err(String::from(
+                        "ReadingInvoiceError::UnmappedError Something wrong happen",
+                    ))
+                }
             },
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_all_invoices_to_charge(&self) -> Result<Vec<Invoice>, String> {
+        tracing::info!("Starting to fetch all invoices to charge");
         let result_invoice = self.reading_invoice.list_all_should_be_charged().await;
         match result_invoice {
-            Ok(list) => Ok(list),
+            Ok(list) => {
+                tracing::info!("Found {} invoices to charge", list.len());
+                Ok(list)
+            }
             Err(error) => match error {
-                ReadingInvoiceError::InvoiceNotFoundError => Err(String::from("Invoice Not found")),
-                ReadingInvoiceError::UnmappedError => Err(String::from(
-                    "ReadingInvoiceError::UnmappedError Something wrong happen",
-                )),
+                ReadingInvoiceError::InvoiceNotFoundError => {
+                    tracing::error!("Invoice Not found when fetching invoices to charge");
+                    Err(String::from("Invoice Not found"))
+                }
+                ReadingInvoiceError::UnmappedError => {
+                    tracing::error!("ReadingInvoiceError::UnmappedError Something wrong happen when fetching invoices to charge");
+                    Err(String::from(
+                        "ReadingInvoiceError::UnmappedError Something wrong happen",
+                    ))
+                }
             },
         }
     }

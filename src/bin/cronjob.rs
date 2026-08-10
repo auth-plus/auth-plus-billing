@@ -1,4 +1,5 @@
 use auth_plus_billing::presentation;
-fn main() -> std::io::Result<()> {
-    presentation::cronjob::start()
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    presentation::cronjob::start().await
 }

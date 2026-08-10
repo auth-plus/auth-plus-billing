@@ -1,10 +1,10 @@
 use auth_plus_billing::{
-    config::{prometheus::Prometheus, zipkin::configure_tracing},
+    config::uptrace::init_uptrace,
     presentation,
 };
 
-fn main() -> std::io::Result<()> {
-    Prometheus::init();
-    configure_tracing();
-    presentation::http::start()
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    init_uptrace();
+    presentation::http::start().await
 }

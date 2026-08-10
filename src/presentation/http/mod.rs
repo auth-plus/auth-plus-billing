@@ -2,15 +2,25 @@ pub mod routes;
 
 use std::time::Duration;
 
-use crate::config::{
-    self,
-    prometheus::{C_HTTP_FAIL, C_HTTP_SUCCESS, Prometheus},
-};
+use crate::config;
 use actix_cors::Cors;
 use actix_service::Service;
 use actix_web::{App, HttpResponse, HttpServer, Responder, web};
 use routes::{charge, invoice, payment_method, user};
 use tracing_actix_web::TracingLogger;
+use opentelemetry::global;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref C_HTTP_SUCCESS: opentelemetry::metrics::Counter<u64> = global::meter("auth_plus_billing")
+        .u64_counter("success_counter")
+        .with_description("counter 20X")
+        .build();
+    static ref C_HTTP_FAIL: opentelemetry::metrics::Counter<u64> = global::meter("auth_plus_billing")
+        .u64_counter("failed_counter")
+        .with_description("counter 50X")
+        .build();
+}
 
 async fn get_health_status() -> impl Responder {
     HttpResponse::Ok()
@@ -18,14 +28,6 @@ async fn get_health_status() -> impl Responder {
         .body("Ok")
 }
 
-async fn get_metrics() -> impl Responder {
-    let result = Prometheus::export();
-    HttpResponse::Ok()
-        .content_type("application/json")
-        .body(result)
-}
-
-#[actix_web::main]
 pub async fn start() -> std::io::Result<()> {
     let config = config::env_var::get_config();
 
@@ -38,15 +40,14 @@ pub async fn start() -> std::io::Result<()> {
                 async {
                     let res = fut.await?;
                     if res.status().is_success() {
-                        C_HTTP_SUCCESS.inc();
+                        C_HTTP_SUCCESS.add(1, &[]);
                     } else {
-                        C_HTTP_FAIL.inc()
+                        C_HTTP_FAIL.add(1, &[]);
                     }
                     Ok(res)
                 }
             })
             .route("/health", web::get().to(get_health_status))
-            .route("/metrics", web::get().to(get_metrics))
             .service(charge::create_charge)
             .service(invoice::get_invoice)
             .service(invoice::create_invoice)
