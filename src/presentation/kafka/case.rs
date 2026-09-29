@@ -1,6 +1,7 @@
 use crate::{core, presentation::http::routes::user::CreateUserInputSchema};
-use log::error;
+use tracing::{error, instrument};
 
+#[instrument(skip(data), fields(topic = %topic))]
 pub async fn switch_case(topic: &str, data: &str) -> Result<(), String> {
     let core_x = core::get_core().await;
     match topic {

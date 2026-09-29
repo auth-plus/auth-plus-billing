@@ -2,7 +2,7 @@ pub mod case;
 use rdkafka::message::Message;
 
 use crate::config::kafka::get_consumer;
-use log::{error, info};
+use tracing::{Instrument, error, info, info_span};
 
 pub async fn start() -> std::io::Result<()> {
     let topics = &[
@@ -18,27 +18,37 @@ pub async fn start() -> std::io::Result<()> {
         match consumer.recv().await {
             Err(e) => error!("Kafka error: {}", e),
             Ok(m) => {
-                let payload = match m.payload_view::<str>() {
-                    None => "",
-                    Some(Ok(s)) => s,
-                    Some(Err(e)) => {
-                        error!("Error while deserializing message payload: {:?}", e);
-                        ""
-                    }
-                };
-                info!(
-                    "key: '{:?}', payload: '{}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-                    m.key(),
-                    payload,
-                    m.topic(),
-                    m.partition(),
-                    m.offset(),
-                    m.timestamp()
+                let span = info_span!(
+                    "kafka.process_message",
+                    topic = m.topic(),
+                    partition = m.partition(),
+                    offset = m.offset()
                 );
-                match case::switch_case(m.topic(), payload).await {
-                    Ok(result) => info!("{:?}", result),
-                    Err(error) => error!("{:?}", error),
+                async {
+                    let payload = match m.payload_view::<str>() {
+                        None => "",
+                        Some(Ok(s)) => s,
+                        Some(Err(e)) => {
+                            error!("Error while deserializing message payload: {:?}", e);
+                            ""
+                        }
+                    };
+                    info!(
+                        key = ?m.key(),
+                        payload = %payload,
+                        topic = %m.topic(),
+                        partition = m.partition(),
+                        offset = m.offset(),
+                        timestamp = ?m.timestamp(),
+                        "Received message from Kafka"
+                    );
+                    match case::switch_case(m.topic(), payload).await {
+                        Ok(result) => info!("{:?}", result),
+                        Err(error) => error!("{:?}", error),
+                    }
                 }
+                .instrument(span)
+                .await;
             }
         };
     }

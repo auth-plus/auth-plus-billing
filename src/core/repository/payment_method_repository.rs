@@ -43,7 +43,7 @@ async fn get_default_by_user_id(
             WHERE
                 is_default = true
                 and user_id = $1
-        "
+        ",
     )
     .bind(user_id.to_string())
     .fetch_one(conn)
@@ -80,7 +80,7 @@ async fn create(
     let inser_info =
         serde_json::to_value(info).map_err(|_| CreatingPaymentMethodError::UnmappedError)?;
     let result = sqlx::query_as::<_, PaymentMethodDAO>(
-    "
+        "
         INSERT INTO payment_method (
             id,
             user_id,

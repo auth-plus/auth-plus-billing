@@ -14,7 +14,10 @@ pub struct InvoiceListUsecase {
 impl InvoiceListUsecase {
     #[tracing::instrument(skip(self))]
     pub async fn get_by_user_id(&self, external_user_id_str: &str) -> Result<Vec<Invoice>, String> {
-        tracing::info!("Starting to fetch invoices for external_user_id: {}", external_user_id_str);
+        tracing::info!(
+            "Starting to fetch invoices for external_user_id: {}",
+            external_user_id_str
+        );
         let user_id = match Uuid::parse_str(external_user_id_str) {
             Ok(id) => id,
             Err(_) => {
@@ -32,7 +35,10 @@ impl InvoiceListUsecase {
                     return Err(String::from("User Not found"));
                 }
                 ReadingUserError::UnmappedError => {
-                    tracing::error!("ReadingUserError::UnmappedError Something wrong happen for user: {}", external_user_id_str);
+                    tracing::error!(
+                        "ReadingUserError::UnmappedError Something wrong happen for user: {}",
+                        external_user_id_str
+                    );
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
                     ));
@@ -52,7 +58,10 @@ impl InvoiceListUsecase {
                     Err(String::from("Invoice Not found"))
                 }
                 ReadingInvoiceError::UnmappedError => {
-                    tracing::error!("ReadingInvoiceError::UnmappedError Something wrong happen for user: {}", user.id);
+                    tracing::error!(
+                        "ReadingInvoiceError::UnmappedError Something wrong happen for user: {}",
+                        user.id
+                    );
                     Err(String::from(
                         "ReadingInvoiceError::UnmappedError Something wrong happen",
                     ))
@@ -76,7 +85,9 @@ impl InvoiceListUsecase {
                     Err(String::from("Invoice Not found"))
                 }
                 ReadingInvoiceError::UnmappedError => {
-                    tracing::error!("ReadingInvoiceError::UnmappedError Something wrong happen when fetching invoices to charge");
+                    tracing::error!(
+                        "ReadingInvoiceError::UnmappedError Something wrong happen when fetching invoices to charge"
+                    );
                     Err(String::from(
                         "ReadingInvoiceError::UnmappedError Something wrong happen",
                     ))

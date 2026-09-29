@@ -18,7 +18,11 @@ impl InvoiceUpdateUsecase {
         invoice_id_str: &str,
         new_status_str: &str,
     ) -> Result<Invoice, String> {
-        tracing::info!("Starting update for invoice: {} to status: {}", invoice_id_str, new_status_str);
+        tracing::info!(
+            "Starting update for invoice: {} to status: {}",
+            invoice_id_str,
+            new_status_str
+        );
         let invoice_id = match Uuid::parse_str(invoice_id_str) {
             Ok(id) => id,
             Err(_) => {
@@ -36,7 +40,10 @@ impl InvoiceUpdateUsecase {
                     return Err(String::from("Invoice not found"));
                 }
                 ReadingInvoiceError::UnmappedError => {
-                    tracing::error!("ReadingInvoiceError::UnmappedError went wrong for invoice: {}", invoice_id);
+                    tracing::error!(
+                        "ReadingInvoiceError::UnmappedError went wrong for invoice: {}",
+                        invoice_id
+                    );
                     return Err(String::from(
                         "ReadingInvoiceError::UnmappedError went wrong",
                     ));
@@ -45,10 +52,18 @@ impl InvoiceUpdateUsecase {
         };
         let new_status = InvoiceStatus::from(new_status_str);
         if !Self::validate_update_status_change(invoice.status, new_status) {
-            tracing::error!("Updating to invalid status. Old: {:?}, New: {:?}", invoice.status, new_status);
+            tracing::error!(
+                "Updating to invalid status. Old: {:?}, New: {:?}",
+                invoice.status,
+                new_status
+            );
             return Err(String::from("Updating to invalid status"));
         }
-        tracing::info!("Status transition valid. Updating invoice: {} to status: {:?}", invoice.id, new_status);
+        tracing::info!(
+            "Status transition valid. Updating invoice: {} to status: {:?}",
+            invoice.id,
+            new_status
+        );
         let result_invoice_update = self.updating_invoice.update(invoice.id, new_status).await;
         match result_invoice_update {
             Ok(invoice) => {
@@ -57,7 +72,10 @@ impl InvoiceUpdateUsecase {
             }
             Err(error) => match error {
                 UpdatingInvoiceError::UnmappedError => {
-                    tracing::error!("UpdatingInvoiceError::UnmappedError went wrong for invoice: {}", invoice.id);
+                    tracing::error!(
+                        "UpdatingInvoiceError::UnmappedError went wrong for invoice: {}",
+                        invoice.id
+                    );
                     Err(String::from(
                         "UpdatingInvoiceError::UnmappedError went wrong",
                     ))

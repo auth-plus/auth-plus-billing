@@ -36,7 +36,11 @@ impl InvoiceInsertItemUsecase {
         itens: &[InvoiceItem],
         idempotency_key: &str,
     ) -> Result<InvoiceInsertItemResponse, String> {
-        tracing::info!("Starting create_invoice process for user: {} with idempotency_key: {}", external_user_id, idempotency_key);
+        tracing::info!(
+            "Starting create_invoice process for user: {} with idempotency_key: {}",
+            external_user_id,
+            idempotency_key
+        );
         let user_id = match Uuid::parse_str(external_user_id) {
             Ok(id) => id,
             Err(_error) => {
@@ -53,12 +57,14 @@ impl InvoiceInsertItemUsecase {
                 format!("error fetching create_invoice cache: {}", e)
             })?;
         if let Some(value) = idempotency {
-            let v: InvoiceInsertItemResponse = serde_json::from_str(&value)
-                .map_err(|e| {
-                    tracing::error!("create_invoice error when parsing from cache: {}", e);
-                    format!("create_invoice error when parsing from cache: {}", e)
-                })?;
-            tracing::info!("Returning cached response for idempotency_key: {}", idempotency_key);
+            let v: InvoiceInsertItemResponse = serde_json::from_str(&value).map_err(|e| {
+                tracing::error!("create_invoice error when parsing from cache: {}", e);
+                format!("create_invoice error when parsing from cache: {}", e)
+            })?;
+            tracing::info!(
+                "Returning cached response for idempotency_key: {}",
+                idempotency_key
+            );
             return Ok(v);
         };
         tracing::info!("Fetching user by id: {}", user_id);
@@ -71,7 +77,10 @@ impl InvoiceInsertItemUsecase {
                     return Err(String::from("User Not found"));
                 }
                 ReadingUserError::UnmappedError => {
-                    tracing::error!("ReadingUserError::UnmappedError Something wrong happen for user: {}", external_user_id);
+                    tracing::error!(
+                        "ReadingUserError::UnmappedError Something wrong happen for user: {}",
+                        external_user_id
+                    );
                     return Err(String::from(
                         "ReadingUserError::UnmappedError Something wrong happen",
                     ));
@@ -104,7 +113,10 @@ impl InvoiceInsertItemUsecase {
                     .await;
                 match result_invoice {
                     Ok(invoice) => {
-                        tracing::info!("Invoice created successfully: {}. Caching response.", invoice.id);
+                        tracing::info!(
+                            "Invoice created successfully: {}. Caching response.",
+                            invoice.id
+                        );
                         let cache_value = serde_json::to_string(
                             &InvoiceInsertItemResponse::Invoice(invoice.clone()),
                         )
@@ -116,7 +128,10 @@ impl InvoiceInsertItemUsecase {
                             format!("create_invoice:{}", idempotency_key),
                             cache_value,
                         ) {
-                            tracing::error!("create_invoice error when setting into cache: {:?}", e);
+                            tracing::error!(
+                                "create_invoice error when setting into cache: {:?}",
+                                e
+                            );
                         }
                         Ok(InvoiceInsertItemResponse::Invoice(invoice))
                     }
@@ -126,7 +141,9 @@ impl InvoiceInsertItemUsecase {
                             Err(String::from("Invoice Not found"))
                         }
                         CreatingInvoiceError::UnmappedError => {
-                            tracing::error!("CreatingInvoiceError::UnmappedError Something wrong happen while creating invoice");
+                            tracing::error!(
+                                "CreatingInvoiceError::UnmappedError Something wrong happen while creating invoice"
+                            );
                             Err(String::from(
                                 "CreatingInvoiceError::UnmappedError Something wrong happen",
                             ))
@@ -135,7 +152,11 @@ impl InvoiceInsertItemUsecase {
                 }
             }
             Some(invoice) => {
-                tracing::info!("Found existing draft invoice: {}. Inserting {} items.", invoice.id, itens.len());
+                tracing::info!(
+                    "Found existing draft invoice: {}. Inserting {} items.",
+                    invoice.id,
+                    itens.len()
+                );
                 let mut item_list: Vec<InvoiceItem> = vec![];
                 for item in itens.iter() {
                     let result_invoice_item = self
@@ -145,14 +166,20 @@ impl InvoiceInsertItemUsecase {
                     match result_invoice_item {
                         Ok(invoice_item) => item_list.push(invoice_item),
                         Err(_) => {
-                            tracing::error!("CreatingInvoiceError::UnmappedError Something wrong happen while inserting item");
+                            tracing::error!(
+                                "CreatingInvoiceError::UnmappedError Something wrong happen while inserting item"
+                            );
                             return Err(String::from(
                                 "CreatingInvoiceError::UnmappedError Something wrong happen",
                             ));
                         }
                     }
                 }
-                tracing::info!("Successfully inserted {} items to invoice: {}. Caching response.", item_list.len(), invoice.id);
+                tracing::info!(
+                    "Successfully inserted {} items to invoice: {}. Caching response.",
+                    item_list.len(),
+                    invoice.id
+                );
                 let cache_value =
                     serde_json::to_string(&InvoiceInsertItemResponse::Item(item_list.clone()))
                         .map_err(|e| {

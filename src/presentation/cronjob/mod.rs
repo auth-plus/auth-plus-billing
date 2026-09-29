@@ -1,7 +1,7 @@
 pub mod commands;
 
 use clap::{Parser, Subcommand};
-use log::{error, info};
+use tracing::{error, info, instrument};
 
 use self::commands::retry_charging_invoices::retry_charging_invoices;
 
@@ -18,6 +18,7 @@ enum Commands {
     Rci,
 }
 
+#[instrument]
 pub async fn start() -> std::io::Result<()> {
     let cli = Cli::parse();
     info!("Job {:?} starting", cli.command);
