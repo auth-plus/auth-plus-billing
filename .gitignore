@@ -1,2 +1,4 @@
 /target
-.env
+
+# dotenv environment variables file
+.env.keys
